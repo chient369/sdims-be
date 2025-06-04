@@ -1,0 +1,2578 @@
+openapi: 3.0.3
+info:
+  title: HRM Module API
+  description: API để quản lý Nhân sự (HRM), bao gồm nhân viên, kỹ năng, đội nhóm, lịch sử dự án và log trạng thái nhân viên.
+  version: 1.0.0
+servers:
+  - url: /api/v1 # Đường dẫn cơ sở cho các API này
+
+paths:
+  # EmployeeController
+  /employees:
+    get:
+      tags:
+        - Employee Management
+      summary: Lấy danh sách tất cả nhân viên với tùy chọn lọc và phân trang
+      operationId: getAllEmployees
+      parameters:
+        - name: keyword
+          in: query
+          description: Từ khóa tìm kiếm theo tên hoặc mã nhân viên
+          required: false
+          schema:
+            type: string
+        - name: teamId
+          in: query
+          description: Lọc theo ID đội nhóm
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: position
+          in: query
+          description: Lọc theo vị trí
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Lọc theo trạng thái (ví dụ: Allocated, Available)
+          required: false
+          schema:
+            type: string
+        - name: skills
+          in: query
+          description: Lọc theo danh sách ID kỹ năng
+          required: false
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: minExperience
+          in: query
+          description: Lọc theo số năm kinh nghiệm tối thiểu
+          required: false
+          schema:
+            type: integer
+        - name: marginStatus
+          in: query
+          description: Lọc theo trạng thái lợi nhuận (Red, Yellow, Green)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Số trang (mặc định 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          description: Kích thước trang (mặc định 10, max 100)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          description: Trường để sắp xếp (mặc định 'employeeCode')
+          required: false
+          schema:
+            type: string
+            default: employeeCode
+        - name: sortDir
+          in: query
+          description: Hướng sắp xếp (asc/desc, mặc định 'asc')
+          required: false
+          schema:
+            type: string
+            default: asc
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về danh sách nhân viên đã phân trang
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePageResponse'
+        '400':
+          description: Yêu cầu không hợp lệ (ví dụ: tham số phân trang sai)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Employee Management
+      summary: Tạo một nhân viên mới
+      operationId: createEmployee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeRequest'
+      responses:
+        '201':
+          description: Nhân viên được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /employees/{id}:
+    get:
+      tags:
+        - Employee Management
+      summary: Lấy thông tin chi tiết một nhân viên theo ID
+      operationId: getEmployeeById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công, trả về thông tin nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Employee Management
+      summary: Cập nhật thông tin một nhân viên hiện có
+      operationId: updateEmployee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của nhân viên cần cập nhật
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Employee Management
+      summary: Xóa một nhân viên (soft delete)
+      operationId: deleteEmployee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của nhân viên cần xóa
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công (Không có nội dung trả về)
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/code/{code}:
+    get:
+      tags:
+        - Employee Management
+      summary: Lấy thông tin nhân viên theo mã nhân viên
+      operationId: getEmployeeByCode
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: Mã nhân viên
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/{id}/status:
+    put:
+      tags:
+        - Employee Management
+      summary: Cập nhật trạng thái của một nhân viên
+      operationId: updateEmployeeStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: Cập nhật trạng thái thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto' # Returns updated employee
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/search/suggest:
+    get:
+      tags:
+        - Employee Management
+      summary: Gợi ý nhân viên dựa trên kỹ năng và kinh nghiệm
+      operationId: suggestEmployeesBySkills
+      parameters:
+        - name: skillIds
+          in: query
+          required: true
+          description: Danh sách ID kỹ năng
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: minExperience
+          in: query
+          required: false
+          description: Số năm kinh nghiệm tối thiểu
+          schema:
+            type: number # Double in Java
+            format: double
+      responses:
+        '200':
+          description: Thành công, trả về danh sách nhân viên gợi ý
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeDto'
+
+  /employees/import:
+    post:
+      tags:
+        - Employee Management
+      summary: Import nhân viên từ file Excel
+      operationId: importEmployees
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary # Represents a file upload
+      responses:
+        '200':
+          description: Import thành công (hoặc thông báo kết quả)
+          content:
+            application/json: # Assuming String response is wrapped in JSON
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Lỗi file hoặc định dạng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/export:
+    get:
+      tags:
+        - Employee Management
+      summary: Export danh sách nhân viên ra file Excel dựa trên bộ lọc
+      operationId: exportEmployees
+      parameters:
+        - name: filters # Assuming filters are passed as a JSON string or similar query param
+          in: query
+          required: false
+          description: Bộ lọc (ví dụ: JSON string các tiêu chí lọc)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công, trả về file Excel
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: # Excel mime type
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Lỗi bộ lọc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # EmployeeSkillController
+  /employees/{employeeId}/skills:
+    get:
+      tags:
+        - Employee Skills Management
+      summary: Lấy tất cả kỹ năng của một nhân viên (phân trang)
+      operationId: getAllEmployeeSkills
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          description: Số trang
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Kích thước trang
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          description: Trường sắp xếp (ví dụ 'skill.name')
+          required: false
+          schema:
+            type: string
+            default: 'skill.name'
+        - name: direction
+          in: query
+          description: Hướng sắp xếp (asc/desc)
+          required: false
+          schema:
+            type: string
+            default: asc
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema: # Assuming Spring's Page<EmployeeSkillDto> serialization or a custom PageResponseDto
+                $ref: '#/components/schemas/EmployeeSkillPageResponse'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Employee Skills Management
+      summary: Thêm một kỹ năng mới cho nhân viên
+      operationId: addSkillToEmployee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeSkillRequest'
+      responses:
+        '201':
+          description: Thêm kỹ năng thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeSkillDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy nhân viên hoặc kỹ năng gốc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/{employeeId}/skills/all:
+    get:
+      tags:
+        - Employee Skills Management
+      summary: Lấy tất cả kỹ năng của một nhân viên (không phân trang)
+      operationId: getAllEmployeeSkillsList
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeSkillDto'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/{employeeId}/skills/{skillId}:
+    get:
+      tags:
+        - Employee Skills Management
+      summary: Lấy thông tin một kỹ năng cụ thể của nhân viên
+      operationId: getEmployeeSkill
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: skillId
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeSkillDto'
+        '404':
+          description: Không tìm thấy kỹ năng của nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Employee Skills Management
+      summary: Cập nhật một kỹ năng của nhân viên
+      operationId: updateEmployeeSkill
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: skillId
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeSkillRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeSkillDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy kỹ năng của nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Employee Skills Management
+      summary: Xóa một kỹ năng khỏi nhân viên
+      operationId: deleteEmployeeSkill
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: skillId
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy kỹ năng của nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    head:
+      tags:
+        - Employee Skills Management
+      summary: Kiểm tra xem nhân viên có một kỹ năng cụ thể không
+      operationId: checkEmployeeHasSkill
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: skillId
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Nhân viên có kỹ năng này
+        '404':
+          description: Nhân viên không có kỹ năng này hoặc không tìm thấy
+
+  /employees/{employeeId}/skills/{skillId}/evaluate:
+    put:
+      tags:
+        - Employee Skills Management
+      summary: Đánh giá một kỹ năng của nhân viên (bởi leader)
+      operationId: evaluateEmployeeSkill
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: skillId
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeSkillEvaluationRequest'
+      responses:
+        '200':
+          description: Đánh giá thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeSkillDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy kỹ năng của nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # TeamController
+  /teams:
+    get:
+      tags:
+        - Team
+      summary: Lấy danh sách tất cả đội nhóm (phân trang)
+      operationId: getAllTeams
+      parameters: # Assuming Spring Pageable default parameters
+        - name: page
+          in: query
+          description: Số trang (0-indexed)
+          schema:
+            type: integer
+        - name: size
+          in: query
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          description: Sắp xếp (ví dụ 'name,asc')
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamPageResponse'
+    post:
+      tags:
+        - Team
+      summary: Tạo một đội nhóm mới
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+      responses:
+        '201':
+          description: Tạo đội nhóm thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /teams/{id}:
+    get:
+      tags:
+        - Team
+      summary: Lấy thông tin đội nhóm theo ID
+      operationId: getTeamById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đội nhóm
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDto'
+        '404':
+          description: Không tìm thấy đội nhóm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Team
+      summary: Cập nhật thông tin đội nhóm
+      operationId: updateTeam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đội nhóm
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy đội nhóm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Team
+      summary: Xóa một đội nhóm
+      operationId: deleteTeam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đội nhóm
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy đội nhóm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /teams/search:
+    get:
+      tags:
+        - Team
+      summary: Tìm kiếm đội nhóm theo tên
+      operationId: searchTeamsByName
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: Tên đội nhóm để tìm kiếm
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamDto'
+
+  /teams/leader/{leaderId}:
+    get:
+      tags:
+        - Team
+      summary: Lấy các đội nhóm theo ID của leader
+      operationId: getTeamsByLeader
+      parameters:
+        - name: leaderId
+          in: path
+          required: true
+          description: ID của leader
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamDto'
+        '404':
+          description: Không tìm thấy leader hoặc không có đội nhóm nào
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /teams/{id}/members:
+    get:
+      tags:
+        - Team
+      summary: Lấy danh sách ID thành viên của một đội nhóm
+      operationId: getTeamMembers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đội nhóm
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int64
+        '404':
+          description: Không tìm thấy đội nhóm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # StatusController (Employee Status Log - part 1)
+  /status-logs/employees/{employeeId}:
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy tất cả log trạng thái của một nhân viên (không phân trang)
+      operationId: getStatusLogsByEmployeeId
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeStatusLogDto'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /status-logs/employees/{employeeId}/paged:
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy log trạng thái của một nhân viên (phân trang)
+      operationId: getStatusLogsByEmployeeIdPaged
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        # Assuming Spring Pageable default parameters
+        - name: page
+          in: query
+          description: Số trang (0-indexed)
+          schema:
+            type: integer
+        - name: size
+          in: query
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          description: Sắp xếp (ví dụ 'createdAt,desc')
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeStatusLogPageResponse'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /status-logs/{id}:
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy một log trạng thái cụ thể theo ID
+      operationId: getStatusLogById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của log trạng thái
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeStatusLogDto'
+        '404':
+          description: Không tìm thấy log trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # SkillController
+  /skills:
+    get:
+      tags:
+        - Skill Management
+      summary: Lấy tất cả kỹ năng với tùy chọn lọc và phân trang
+      operationId: getAllSkills
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          description: Lọc theo ID danh mục kỹ năng
+          schema:
+            type: integer
+            format: int64
+        - name: search
+          in: query
+          required: false
+          description: Từ khóa tìm kiếm theo tên kỹ năng
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: name
+        - name: direction
+          in: query
+          schema:
+            type: string
+            default: asc
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema: # Assuming Page<SkillDto> is serialized to standard Spring Page or custom wrapper
+                $ref: '#/components/schemas/SkillPageResponse'
+    post:
+      tags:
+        - Skill Management
+      summary: Tạo một kỹ năng mới
+      operationId: createSkill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillDto' # SkillDto is used for request body
+      responses:
+        '201':
+          description: Tạo kỹ năng thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDto'
+        '400':
+          description: Dữ liệu không hợp lệ (ví dụ ID đã tồn tại)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /skills/{id}:
+    get:
+      tags:
+        - Skill Management
+      summary: Lấy thông tin kỹ năng theo ID
+      operationId: getSkillById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDto'
+        '404':
+          description: Không tìm thấy kỹ năng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Skill Management
+      summary: Cập nhật một kỹ năng hiện có
+      operationId: updateSkill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillDto' # SkillDto is used for request body
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillDto'
+        '400':
+          description: Dữ liệu không hợp lệ (ví dụ ID không khớp)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy kỹ năng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Skill Management
+      summary: Xóa một kỹ năng
+      operationId: deleteSkill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy kỹ năng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /skills/category/{categoryId}:
+    get:
+      tags:
+        - Skill Management
+      summary: Lấy tất cả kỹ năng trong một danh mục
+      operationId: getSkillsByCategory
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          description: ID của danh mục kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillDto'
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /skills/search:
+    get:
+      tags:
+        - Skill Management
+      summary: Tìm kiếm kỹ năng theo tên (phân trang)
+      operationId: searchSkillsByName
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Từ khóa tìm kiếm
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema: # Assuming Page<SkillDto>
+                $ref: '#/components/schemas/SkillPageResponse'
+
+  # SkillCategoryController
+  /skill-categories:
+    get:
+      tags:
+        - Skill Category Management
+      summary: Lấy tất cả danh mục kỹ năng
+      operationId: getAllSkillCategories
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillCategoryDto'
+    post:
+      tags:
+        - Skill Category Management
+      summary: Tạo một danh mục kỹ năng mới
+      operationId: createSkillCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillCategoryRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillCategoryDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /skill-categories/{id}:
+    get:
+      tags:
+        - Skill Category Management
+      summary: Lấy thông tin danh mục kỹ năng theo ID
+      operationId: getSkillCategoryById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của danh mục kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillCategoryDto'
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Skill Category Management
+      summary: Cập nhật một danh mục kỹ năng hiện có
+      operationId: updateSkillCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của danh mục kỹ năng
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillCategoryRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillCategoryDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Skill Category Management
+      summary: Xóa một danh mục kỹ năng
+      operationId: deleteSkillCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của danh mục kỹ năng
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy danh mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ProjectHistoryController
+  /employees/{employeeId}/projects:
+    get:
+      tags:
+        - Project History Management
+      summary: Lấy tất cả lịch sử dự án của một nhân viên (phân trang)
+      operationId: getAllProjectHistory
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sort
+          in: query
+          schema:
+            type: string
+            default: startDate
+        - name: direction
+          in: query
+          schema:
+            type: string
+            default: desc
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema: # Assuming Page<ProjectHistoryDto>
+                $ref: '#/components/schemas/ProjectHistoryPageResponse'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Project History Management
+      summary: Tạo một lịch sử dự án mới cho nhân viên
+      operationId: createProjectHistory
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectHistoryRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHistoryDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/{employeeId}/projects/{id}:
+    get:
+      tags:
+        - Project History Management
+      summary: Lấy một lịch sử dự án cụ thể
+      operationId: getProjectHistory
+      parameters:
+        - name: employeeId # Though employeeId is in path, it might not be used if 'id' of project history is globally unique
+          in: path
+          required: true
+          description: ID của nhân viên (có thể không cần thiết nếu ID dự án là duy nhất)
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          description: ID của lịch sử dự án
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHistoryDto'
+        '404':
+          description: Không tìm thấy lịch sử dự án
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Project History Management
+      summary: Cập nhật một lịch sử dự án hiện có
+      operationId: updateProjectHistory
+      parameters:
+        - name: employeeId # May not be strictly needed for the update logic if 'id' is primary
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          description: ID của lịch sử dự án
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectHistoryRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHistoryDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy lịch sử dự án
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Project History Management
+      summary: Xóa một lịch sử dự án
+      operationId: deleteProjectHistory
+      parameters:
+        - name: employeeId # May not be strictly needed
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        - name: id
+          in: path
+          required: true
+          description: ID của lịch sử dự án
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy lịch sử dự án
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/{employeeId}/projects/current:
+    get:
+      tags:
+        - Project History Management
+      summary: Lấy các dự án hiện tại đang hoạt động của một nhân viên
+      operationId: getCurrentProjects
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectHistoryDto'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employees/projects/search: # Global search, not tied to a specific employeeId in path
+    get:
+      tags:
+        - Project History Management
+      summary: Tìm kiếm lịch sử dự án theo tên dự án (trên tất cả nhân viên)
+      operationId: searchProjectsByNameAcrossEmployees
+      parameters:
+        - name: projectName
+          in: query
+          required: true
+          description: Tên dự án để tìm kiếm
+          schema:
+            type: string
+        - name: page # Assuming pagination from method signature
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Thành công # Returns List<ProjectHistoryDto>, so not paged by default unless service implies it.
+          content:
+            application/json: # The controller returns List<ProjectHistoryDto>, not Page.
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectHistoryDto'
+
+  # EmployeeStatusLogController
+  /employee-status-logs/employees/{employeeId}/status-logs:
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy log trạng thái cho một nhân viên cụ thể (phân trang)
+      operationId: getEmployeeStatusLogsPaged # Renamed to avoid conflict with StatusController if it were global
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+        # Assuming Spring Pageable default parameters
+        - name: page
+          in: query
+          description: Số trang (0-indexed)
+          schema:
+            type: integer
+        - name: size
+          in: query
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: sort
+          in: query
+          description: Sắp xếp (ví dụ 'createdAt,desc')
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeStatusLogPageResponse' # Using the PageResponseDto wrapper
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employee-status-logs/employees/{employeeId}/status-logs/latest:
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy log trạng thái gần nhất của một nhân viên
+      operationId: getLatestEmployeeStatusLog
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeStatusLogDto'
+        '404':
+          description: Không tìm thấy nhân viên hoặc không có log nào
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /employee-status-logs/status-logs/status: # Path is /api/v1/employee-status-logs/status-logs/status
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy các log trạng thái theo một trạng thái cụ thể
+      operationId: getStatusLogsByStatus
+      parameters:
+        - name: status
+          in: query
+          required: true
+          description: Trạng thái để lọc
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeStatusLogDto'
+
+  /employee-status-logs/status-logs/date-range: # Path is /api/v1/employee-status-logs/status-logs/date-range
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy các log trạng thái được tạo trong một khoảng ngày
+      operationId: getStatusLogsByDateRange
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: Ngày bắt đầu (ISO DateTime)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          required: true
+          description: Ngày kết thúc (ISO DateTime)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeStatusLogDto'
+
+  /employee-status-logs/status-logs/ending-soon: # Path is /api/v1/employee-status-logs/status-logs/ending-soon
+    get:
+      tags:
+        - Employee Status Log
+      summary: Lấy log trạng thái cho các dự án sắp kết thúc
+      operationId: getProjectsEndingSoonStatusLogs
+      parameters:
+        - name: endDate
+          in: query
+          required: true
+          description: Ngưỡng ngày kết thúc (ISO Date)
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeStatusLogDto'
+
+  /employee-status-logs/employees/{employeeId}/status: # POST /api/v1/employee-status-logs/employees/{employeeId}/status
+    post:
+      tags:
+        - Employee Status Log
+      summary: Cập nhật trạng thái nhân viên và tạo log mới
+      operationId: updateEmployeeStatusAndLog
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: ID của nhân viên
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '201':
+          description: Cập nhật và tạo log thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeStatusLogDto'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    # Common Schemas
+    PageableInfo:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          description: Số trang hiện tại (trả về 1-based từ EmployeeController, các nơi khác có thể là 0-based)
+        pageSize:
+          type: integer
+          description: Số mục trên mỗi trang
+        totalPages:
+          type: integer
+          description: Tổng số trang
+        totalElements:
+          type: integer
+          format: int64
+          description: Tổng số mục
+        sort:
+          type: string
+          description: Thông tin sắp xếp (ví dụ: 'fieldName,asc')
+        errorCode:
+          type: string
+          nullable: true
+          description: Mã lỗi (nếu có)
+        errorMessage:
+          type: string
+          nullable: true
+          description: Thông báo lỗi (nếu có)
+
+    # Generic Page Response Wrappers (Define per DTO type for clarity)
+    EmployeePageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    EmployeePageResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/EmployeePageData'
+
+    EmployeeSkillPageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeSkillDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    EmployeeSkillPageResponse: # Assuming Page<EmployeeSkillDto> uses similar PageResponseDto structure
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/EmployeeSkillPageData'
+          
+    TeamPageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    TeamPageResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/TeamPageData'
+
+    EmployeeStatusLogPageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeStatusLogDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    EmployeeStatusLogPageResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/EmployeeStatusLogPageData'
+
+    SkillPageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    SkillPageResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/SkillPageData'
+
+    ProjectHistoryPageData:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectHistoryDto'
+        pageable:
+          $ref: '#/components/schemas/PageableInfo'
+    ProjectHistoryPageResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        code:
+          type: integer
+          example: 200
+        data:
+          $ref: '#/components/schemas/ProjectHistoryPageData'
+          
+    # DTO Schemas
+    EmployeeTeamDto: # Inner DTO from EmployeeDto
+      type: object
+      description: Thông tin đội nhóm rút gọn cho nhân viên
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    EmployeeDto:
+      type: object
+      description: Đại diện cho một nhân viên
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+        employeeCode:
+          type: string
+          description: Mã nhân viên (duy nhất)
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        hireDate:
+          type: string
+          format: date
+          nullable: true
+        companyEmail:
+          type: string
+          format: email
+        internalAccount:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        emergencyContact:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        team:
+          $ref: '#/components/schemas/EmployeeTeamDto'
+          nullable: true
+        reportingLeaderId:
+          type: integer
+          format: int64
+          nullable: true
+        reportingLeaderName:
+          type: string
+          nullable: true
+        currentStatus:
+          type: string
+          nullable: true
+        statusUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        profilePictureUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - employeeCode
+        - firstName
+        - lastName
+        - companyEmail
+
+    EmployeeRequest:
+      type: object
+      description: Dữ liệu để tạo hoặc cập nhật nhân viên
+      properties:
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+        employeeCode:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        hireDate:
+          type: string
+          format: date
+          nullable: true
+        companyEmail:
+          type: string
+          format: email
+        internalAccount:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        emergencyContact:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        teamId:
+          type: integer
+          format: int64
+          nullable: true
+        reportingLeaderId:
+          type: integer
+          format: int64
+          nullable: true
+        currentStatus:
+          type: string
+          nullable: true
+        profilePictureUrl:
+          type: string
+          nullable: true
+      required:
+        - employeeCode
+        - firstName
+        - lastName
+        - companyEmail
+
+    StatusUpdateRequest:
+      type: object
+      description: Dữ liệu để cập nhật trạng thái nhân viên
+      properties:
+        status:
+          type: string
+        projectName:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        expectedEndDate:
+          type: string
+          format: date
+          nullable: true
+        allocationPercentage:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+        isBillable:
+          type: boolean
+          nullable: true
+        contractId:
+          type: integer
+          format: int64
+          nullable: true
+        note:
+          type: string
+          nullable: true
+      required:
+        - status
+
+    EmployeeSkillDto:
+      type: object
+      description: Đại diện cho một kỹ năng của nhân viên
+      properties:
+        id:
+          type: integer
+          format: int64
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+          nullable: true
+        skillId:
+          type: integer
+          format: int64
+        skillName:
+          type: string
+          nullable: true
+        skillCategoryName:
+          type: string
+          nullable: true
+        yearsExperience:
+          type: number # BigDecimal in Java
+          format: double # Approximate
+          nullable: true
+        selfAssessmentLevel:
+          type: string
+          nullable: true
+        leaderAssessmentLevel:
+          type: string
+          nullable: true
+        selfComment:
+          type: string
+          nullable: true
+        leaderComment:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - employeeId
+        - skillId
+
+    EmployeeSkillRequest:
+      type: object
+      description: Dữ liệu để thêm hoặc cập nhật kỹ năng cho nhân viên
+      properties:
+        skillId:
+          type: integer
+          format: int64
+        yearsExperience:
+          type: number # BigDecimal
+          format: double
+          nullable: true
+        selfAssessmentLevel:
+          type: string
+          nullable: true
+        selfComment:
+          type: string
+          nullable: true
+        leaderAssessmentLevel:
+          type: string
+          nullable: true
+        leaderComment:
+          type: string
+          nullable: true
+      required:
+        - skillId
+
+    EmployeeSkillEvaluationRequest:
+      type: object
+      description: Dữ liệu để leader đánh giá kỹ năng nhân viên
+      properties:
+        leaderAssessmentLevel:
+          type: string
+        leaderComment:
+          type: string
+          nullable: true
+      required:
+        - leaderAssessmentLevel
+
+    TeamDto:
+      type: object
+      description: Đại diện cho một đội nhóm
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        department:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        leaderId:
+          type: integer
+          format: int64
+          nullable: true
+        leaderName:
+          type: string
+          nullable: true
+        parentTeamId:
+          type: integer
+          format: int64
+          nullable: true
+        parentTeamName:
+          type: string
+          nullable: true
+        members: # Recursive definition if EmployeeDto contains TeamDto. EmployeeDto.team is simpler.
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto' # This defines TeamDto contains full EmployeeDto
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdBy:
+          type: string # User reference, could be ID or name
+          nullable: true
+        updatedBy:
+          type: string # User reference
+          nullable: true
+
+    TeamRequest:
+      type: object
+      description: Dữ liệu để tạo hoặc cập nhật đội nhóm
+      properties:
+        name:
+          type: string
+        department:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        leaderId:
+          type: integer
+          format: int64
+          nullable: true
+        parentTeamId:
+          type: integer
+          format: int64
+          nullable: true
+      required:
+        - name
+
+    EmployeeStatusLogDto:
+      type: object
+      description: Đại diện cho một log thay đổi trạng thái nhân viên
+      properties:
+        id:
+          type: integer
+          format: int64
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+          nullable: true
+        status:
+          type: string
+        projectName:
+          type: string
+          nullable: true
+        clientName:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        expectedEndDate:
+          type: string
+          format: date
+          nullable: true
+        allocationPercentage:
+          type: integer
+          nullable: true
+        isBillable:
+          type: boolean
+          nullable: true
+        contractId:
+          type: integer
+          format: int64
+          nullable: true
+        contractName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdBy: # Assuming ID
+          type: integer 
+          format: int64
+          nullable: true
+        updatedBy: # Assuming ID
+          type: integer
+          format: int64
+          nullable: true
+        createdByName:
+          type: string
+          nullable: true
+        updatedByName:
+          type: string
+          nullable: true
+      required:
+        - employeeId
+        - status
+
+    SkillDto:
+      type: object
+      description: Đại diện cho một kỹ năng
+      properties:
+        id:
+          type: integer
+          format: int64
+        categoryId:
+          type: integer
+          format: int64
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      # 'name' and 'categoryId' might be required for creation depending on service logic
+      # For PUT/POST, SkillDto is used directly, so 'name' would be required from @Valid on DTO.
+      # Assuming 'name' is required for practical purposes.
+      required:
+         - name
+
+    SkillCategoryDto:
+      type: object
+      description: Đại diện cho một danh mục kỹ năng
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillDto'
+          nullable: true
+      required:
+        - name
+
+
+    SkillCategoryRequest:
+      type: object
+      description: Dữ liệu để tạo hoặc cập nhật danh mục kỹ năng
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    ProjectHistoryDto:
+      type: object
+      description: Đại diện cho một mục lịch sử dự án của nhân viên
+      properties:
+        id:
+          type: integer
+          format: int64
+        employeeId:
+          type: integer
+          format: int64
+        employeeName:
+          type: string
+          nullable: true
+        projectName:
+          type: string
+        clientName:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - employeeId
+        - projectName
+
+    ProjectHistoryRequest:
+      type: object
+      description: Dữ liệu để tạo hoặc cập nhật lịch sử dự án
+      properties:
+        projectName:
+          type: string
+        clientName:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      required:
+        - projectName
+
+    # Error Schemas
+    Error: # From user's template
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Mã lỗi HTTP hoặc mã lỗi tùy chỉnh
+        message:
+          type: string
+          description: Mô tả lỗi
+      required:
+        - code
+        - message
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ValidationError: # More specific error for validation failures
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        code:
+          type: integer
+          example: 400 # HTTP status code
+        errorCode:
+          type: string
+          nullable: true
+          example: "VALIDATION_ERROR" # Application specific error code
+        message:
+          type: string
+          example: "Input validation failed"
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          nullable: true

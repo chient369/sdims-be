@@ -1,0 +1,63 @@
+# Maven build output
+target/
+
+# Maven specific files (often temporary or local)
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# IDE specific files
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+
+# Log files and directories
+logs/
+*.log
+
+# Operating System generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Uploads folder (if it contains user-specific or temporary data)
+uploads/
+
+# Temporary files
+*.tmp
+*~
+*.swp
+
+# Eclipse specific
+.metadata
+bin/
+tmp/
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
+
+# NetBeans specific
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Compiled class files (though `target/` should cover this for Maven)
+*.class
+
+logs/
