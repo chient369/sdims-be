@@ -1,13 +1,14 @@
 package com.company.internalmgmt.modules.dashboard.service.impl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.Collections;
-import java.math.BigDecimal;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -28,8 +29,9 @@ import com.company.internalmgmt.modules.dashboard.dto.RevenueSummaryDTO;
 import com.company.internalmgmt.modules.dashboard.dto.UtilizationRateDTO;
 import com.company.internalmgmt.modules.dashboard.service.DashboardService;
 import com.company.internalmgmt.modules.hrm.dto.EmployeeDto;
-import com.company.internalmgmt.modules.hrm.model.Employee;
 import com.company.internalmgmt.modules.hrm.service.EmployeeService;
+import com.company.internalmgmt.modules.hrm.service.EmployeeStatusLogService;
+import com.company.internalmgmt.modules.hrm.service.TeamService;
 import com.company.internalmgmt.modules.margin.dto.EmployeeMarginDTO;
 import com.company.internalmgmt.modules.margin.dto.MarginSummaryDTO;
 import com.company.internalmgmt.modules.margin.service.MarginService;
@@ -38,7 +40,6 @@ import com.company.internalmgmt.modules.opportunity.dto.request.ListOpportunitie
 import com.company.internalmgmt.modules.opportunity.dto.response.ListOpportunitiesResponse;
 import com.company.internalmgmt.modules.opportunity.dto.response.OpportunitySummaryDTO;
 import com.company.internalmgmt.modules.opportunity.service.OpportunityService;
-import com.company.internalmgmt.modules.hrm.service.EmployeeStatusLogService;
 
 /**
  * Implementation of DashboardService
@@ -63,6 +64,9 @@ public class DashboardServiceImpl implements DashboardService {
     
     @Autowired
     private EmployeeStatusLogService employeeStatusLogService;
+    
+    @Autowired
+    private TeamService teamService;
     
     @Override
     public DashboardSummaryDTO getDashboardSummary(
@@ -279,32 +283,48 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
             
             // Build trend data (last 6 months)
-            List<MarginDistributionDTO.TrendItemDTO> trend = Arrays.asList(
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.minusMonths(5).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build(),
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.minusMonths(4).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build(),
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.minusMonths(3).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build(),
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.minusMonths(2).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build(),
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.minusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build(),
-                    MarginDistributionDTO.TrendItemDTO.builder()
-                            .month(fromDate.format(DateTimeFormatter.ofPattern("yyyy-MM")))
-                            .value(marginSummary.getSummary().getAverageMargin().doubleValue())
-                            .build()
-            );
+            List<MarginDistributionDTO.TrendItemDTO> trend = new ArrayList<>();
+            LocalDate trendEndDate = toDate; // Use toDate from parameters as the end point for the trend calculation
+
+            for (int i = 0; i < 6; i++) {
+                LocalDate monthEndDate = trendEndDate.minusMonths(i);
+                LocalDate monthStartDate = monthEndDate.withDayOfMonth(1);
+                
+                try {
+                    MarginSummaryDTO monthlySummary = marginService.getMarginSummary(
+                            teamId,
+                            "month",
+                            monthStartDate,
+                            monthEndDate,
+                            null,
+                            null,
+                            null,
+                            "table", // Assuming "table" is suitable for this context
+                            "status" // Assuming "status" is suitable
+                    );
+                    
+                    double monthlyAverageMargin = 0.0;
+                    if (monthlySummary != null && 
+                        monthlySummary.getSummary() != null && 
+                        monthlySummary.getSummary().getAverageMargin() != null) {
+                        monthlyAverageMargin = monthlySummary.getSummary().getAverageMargin().doubleValue();
+                    }
+                    
+                    trend.add(MarginDistributionDTO.TrendItemDTO.builder()
+                            .month(monthEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM")))
+                            .value(monthlyAverageMargin)
+                            .build());
+                } catch (Exception e) {
+                    // Log error or handle as needed, e.g., add a default/error trend item
+                    // For now, just print a message and add a zero-value trend item
+                    System.err.println("Error fetching margin summary for month " + monthEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM")) + ": " + e.getMessage());
+                    trend.add(MarginDistributionDTO.TrendItemDTO.builder()
+                            .month(monthEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM")))
+                            .value(0.0) // Default to 0 if error
+                            .build());
+                }
+            }
+            Collections.reverse(trend); // Ensure the trend is in chronological order
             
             return MarginDistributionDTO.builder()
                     .totalEmployees(totalEmployees)
@@ -341,12 +361,61 @@ public class DashboardServiceImpl implements DashboardService {
                     fromDate, toDate, null, pageable
             );
             
-            // Calculate revenue metrics
-            long totalRevenue = contracts.getContent().stream()
-                    .mapToLong(contract -> contract.getAmount() != null ? 
-                            contract.getAmount().longValue() : 0L)
+            // Calculate target achievements
+            // TODO: Replace with actual target data source if available.
+            // The following is a simplified calculation for targets and actuals based on total revenue in the period.
+            long monthlyTarget = 0; 
+            long quarterlyTarget = 0;
+            long ytdTarget = 0;
+            long actualMonthlyRevenue = 0;
+            long actualQuarterlyRevenue = 0;
+            long actualYtdRevenue = 0;
+
+            // Calculate actual revenue for current month, quarter, YTD based on contract sign dates
+            // This assumes revenue is recognized at contract signing for simplicity for this widget.
+            // A more accurate approach would involve payment terms and revenue recognition schedules.
+            LocalDate today = LocalDate.now();
+            LocalDate firstDayOfCurrentMonth = fromDate.withDayOfMonth(1); // Use fromDate from request to determine current month context
+            LocalDate firstDayOfCurrentQuarter = firstDayOfCurrentMonth.with(firstDayOfCurrentMonth.getMonth().firstMonthOfQuarter());
+            LocalDate firstDayOfCurrentYear = firstDayOfCurrentMonth.withDayOfYear(1);
+
+            actualMonthlyRevenue = contracts.getContent().stream()
+                .filter(c -> c.getSignDate() != null && 
+                             !c.getSignDate().isBefore(firstDayOfCurrentMonth) && 
+                             c.getSignDate().isBefore(firstDayOfCurrentMonth.plusMonths(1)))
+                .mapToLong(c -> c.getAmount() != null ? c.getAmount().longValue() : 0L)
+                .sum();
+
+            actualQuarterlyRevenue = contracts.getContent().stream()
+                .filter(c -> c.getSignDate() != null && 
+                             !c.getSignDate().isBefore(firstDayOfCurrentQuarter) && 
+                             c.getSignDate().isBefore(firstDayOfCurrentQuarter.plusMonths(3)))
+                .mapToLong(c -> c.getAmount() != null ? c.getAmount().longValue() : 0L)
+                .sum();
+
+            actualYtdRevenue = contracts.getContent().stream()
+                .filter(c -> c.getSignDate() != null && 
+                             !c.getSignDate().isBefore(firstDayOfCurrentYear) && 
+                             c.getSignDate().isBefore(firstDayOfCurrentYear.plusYears(1)))
+                .mapToLong(c -> c.getAmount() != null ? c.getAmount().longValue() : 0L)
+                .sum();
+
+            // Simplified targets based on total revenue in the requested period (fromDate - toDate)
+            // This is a placeholder and should be replaced with actual business targets.
+            if (contracts.getTotalElements() > 0) {
+                 long totalRevenueInPeriod = contracts.getContent().stream()
+                    .mapToLong(contract -> contract.getAmount() != null ? contract.getAmount().longValue() : 0L)
                     .sum();
-            
+                // Distribute totalRevenueInPeriod as a mock target for month/quarter/year based on the period length.
+                // This is a very rough estimation.
+                long daysInPeriod = java.time.temporal.ChronoUnit.DAYS.between(fromDate, toDate.plusDays(1));
+                if (daysInPeriod > 0) {
+                    monthlyTarget = (long) (totalRevenueInPeriod * (30.0 / daysInPeriod));
+                    quarterlyTarget = (long) (totalRevenueInPeriod * (90.0 / daysInPeriod));
+                    ytdTarget = (long) (totalRevenueInPeriod * (365.0 / daysInPeriod)); 
+                }
+            }
+
             // Count new contracts in period
             int newContractsCount = (int) contracts.getContent().stream()
                     .filter(contract -> {
@@ -370,26 +439,21 @@ public class DashboardServiceImpl implements DashboardService {
                             payment.getAmount().longValue() : 0L)
                     .sum();
             
-            // Calculate target achievements (assuming targets from contracts)
-            long monthlyTarget = totalRevenue / 12; // Simple assumption
-            long quarterlyTarget = totalRevenue / 4;
-            long ytdTarget = totalRevenue;
-            
             return RevenueSummaryDTO.builder()
                     .currentMonth(RevenueSummaryDTO.RevenuePeriodDTO.builder()
-                            .target(monthlyTarget)
-                            .actual(totalRevenue / 12) // Simple calculation
-                            .achievement(monthlyTarget > 0 ? (double) (totalRevenue / 12) * 100 / monthlyTarget : 0.0)
+                            .target(monthlyTarget) // Placeholder target
+                            .actual(actualMonthlyRevenue)
+                            .achievement(monthlyTarget > 0 ? (double) actualMonthlyRevenue * 100 / monthlyTarget : (actualMonthlyRevenue > 0 ? 100.0 : 0.0))
                             .build())
                     .currentQuarter(RevenueSummaryDTO.RevenuePeriodDTO.builder()
-                            .target(quarterlyTarget)
-                            .actual(totalRevenue / 4) // Simple calculation
-                            .achievement(quarterlyTarget > 0 ? (double) (totalRevenue / 4) * 100 / quarterlyTarget : 0.0)
+                            .target(quarterlyTarget) // Placeholder target
+                            .actual(actualQuarterlyRevenue)
+                            .achievement(quarterlyTarget > 0 ? (double) actualQuarterlyRevenue * 100 / quarterlyTarget : (actualQuarterlyRevenue > 0 ? 100.0 : 0.0))
                             .build())
                     .ytd(RevenueSummaryDTO.RevenuePeriodDTO.builder()
-                            .target(ytdTarget)
-                            .actual(totalRevenue)
-                            .achievement(ytdTarget > 0 ? (double) totalRevenue * 100 / ytdTarget : 0.0)
+                            .target(ytdTarget) // Placeholder target
+                            .actual(actualYtdRevenue)
+                            .achievement(ytdTarget > 0 ? (double) actualYtdRevenue * 100 / ytdTarget : (actualYtdRevenue > 0 ? 100.0 : 0.0))
                             .build())
                     .contracts(RevenueSummaryDTO.ContractsDTO.builder()
                             .total((int) contracts.getTotalElements())
@@ -523,63 +587,121 @@ public class DashboardServiceImpl implements DashboardService {
             Long currentUserId, Authentication authentication) {
         
         try {
-            // Get all employees
-            Pageable pageable = PageRequest.of(0, 1000);
-            Page<EmployeeDto> employees = employeeService.findEmployees(
-                    null, 
-                    teamId != null ? teamId.intValue() : null, 
-                    null, 
-                    null, 
-                    null, 
-                    null, 
-                    null, 
-                    pageable
+            // Get all active employees (not resigned/terminated)
+            // Assuming "active", "allocated", "available", "ending_soon", "on_leave" are active states
+            // and "resigned", "terminated" are inactive.
+            // For simplicity, let's consider all employees returned by default findEmployees as potentially active.
+            // A more precise filter might be needed based on actual status values.
+            Pageable allEmployeesPageable = PageRequest.of(0, Integer.MAX_VALUE); // Get all
+            Page<EmployeeDto> allActiveEmployeesPage = employeeService.findEmployees(
+                    null, null, null, null, null, null, null, allEmployeesPageable
             );
+            List<EmployeeDto> allActiveEmployeesList = allActiveEmployeesPage.getContent();
+            long totalActiveEmployees = allActiveEmployeesList.stream()
+                .filter(emp -> emp.getCurrentStatus() != null && 
+                               !emp.getCurrentStatus().equalsIgnoreCase("Resigned") &&
+                               !emp.getCurrentStatus().equalsIgnoreCase("Terminated"))
+                .count();
+
+            // Get allocated employees
+            long allocatedEmployeesCount = allActiveEmployeesList.stream()
+                    .filter(emp -> emp.getCurrentStatus() != null && 
+                                   (emp.getCurrentStatus().equalsIgnoreCase("Allocated") || 
+                                    emp.getCurrentStatus().equalsIgnoreCase("Active"))) // Assuming "Active" also means allocated
+                    .count();
             
-            // Get margin summary to get team utilization data
-            MarginSummaryDTO marginSummary = marginService.getMarginSummary(
-                    teamId, 
-                    "month", 
-                    fromDate, 
-                    toDate, 
-                    null, 
-                    null, 
-                    null, 
-                    "table", 
-                    "team"
-            );
+            double overallUtilization = totalActiveEmployees > 0 ? 
+                    (double) allocatedEmployeesCount * 100 / totalActiveEmployees : 0.0;
             
-            // Calculate overall utilization (simple assumption based on allocated vs total)
-            int totalEmployees = (int) employees.getTotalElements();
-            int allocatedEmployees = 0;
-            
-            for (EmployeeDto emp : employees.getContent()) {
-                String status = emp.getCurrentStatus();
-                if (status != null && ("allocated".equalsIgnoreCase(status) || "active".equalsIgnoreCase(status))) {
-                    allocatedEmployees++;
+            // Build team utilization list
+            List<com.company.internalmgmt.modules.hrm.dto.TeamDto> teams = teamService.getAllTeams();
+            List<UtilizationRateDTO.TeamUtilizationDTO> teamUtilizations = teams.stream().map(t -> {
+                Page<EmployeeDto> teamEmployeesPage = employeeService.findEmployees(
+                        null, t.getId().intValue(), null, null, null, null, null, allEmployeesPageable
+                );
+                List<EmployeeDto> teamEmployeesList = teamEmployeesPage.getContent();
+
+                long totalActiveInTeam = teamEmployeesList.stream()
+                    .filter(emp -> emp.getCurrentStatus() != null &&
+                                   !emp.getCurrentStatus().equalsIgnoreCase("Resigned") &&
+                                   !emp.getCurrentStatus().equalsIgnoreCase("Terminated"))
+                    .count();
+                
+                long allocatedInTeam = teamEmployeesList.stream()
+                        .filter(emp -> emp.getCurrentStatus() != null &&
+                                       (emp.getCurrentStatus().equalsIgnoreCase("Allocated") ||
+                                        emp.getCurrentStatus().equalsIgnoreCase("Active")))
+                        .count();
+                
+                double teamRate = totalActiveInTeam > 0 ? 
+                        (double) allocatedInTeam * 100 / totalActiveInTeam : 0.0;
+                
+                return UtilizationRateDTO.TeamUtilizationDTO.builder()
+                        .team(t.getName())
+                        .rate(teamRate)
+                        .build();
+            }).collect(Collectors.toList());
+
+            // Build trend data (last 6 months)
+            List<UtilizationRateDTO.UtilizationTrendDTO> trendData = new ArrayList<>();
+            LocalDate currentTrendMonth = LocalDate.now(); // Start from the current month for the trend
+
+            for (int i = 0; i < 6; i++) {
+                LocalDate loopMonth = currentTrendMonth.minusMonths(i);
+                // For calculating utilization, we typically look at the state at a point in time
+                // or an average over a period. For simplicity, we'll re-calculate overall utilization
+                // as if it were for that past month. This might need more sophisticated historical tracking in a real system.
+
+                // Recalculate overall utilization for the specific month (loopMonth)
+                // This is still using current statuses. A real implementation needs to check statuses as of 'loopMonth'
+                // The following is an approximation for trend calculation as EmployeeDto reflects current state,
+                // and we don't have easy access to historical monthly snapshots of every employee's status for past months.
+                long monthlyTotalActiveEmployees = 0;
+                long monthlyAllocatedEmployeesCount = 0;
+                double monthlyOverallUtilization = 0.0;
+
+                try {
+                    // Note: employeeService.findEmployees doesn't directly support historical queries by date.
+                    // The following logic assumes current employee statuses reflect the past, which is an approximation.
+                    // For accurate historical trend, you would need to query historical employee status data (e.g., from EmployeeStatusLogTable for each employee active in that month)
+                    
+                    Pageable allEmployeesPageableForTrend = PageRequest.of(0, Integer.MAX_VALUE);
+                    Page<EmployeeDto> allActiveEmployeesPageForTrend = employeeService.findEmployees(
+                            null, null, null, null, null, null, null, allEmployeesPageableForTrend
+                    );
+                    List<EmployeeDto> allActiveEmployeesListForTrend = allActiveEmployeesPageForTrend.getContent();
+
+                    // This is still using current statuses. A real implementation needs to check statuses as of 'loopMonth'
+                    // The following is an approximation for trend calculation as EmployeeDto reflects current state,
+                    // and we don't have easy access to historical monthly snapshots of every employee's status for past months.
+                    monthlyTotalActiveEmployees = allActiveEmployeesListForTrend.stream()
+                        .filter(emp -> emp.getCurrentStatus() != null && 
+                                       !emp.getCurrentStatus().equalsIgnoreCase("Resigned") &&
+                                       !emp.getCurrentStatus().equalsIgnoreCase("Terminated") &&
+                                       (emp.getHireDate() == null || !emp.getHireDate().isAfter(loopMonth.withDayOfMonth(loopMonth.lengthOfMonth()))))
+                        .count();
+
+                    monthlyAllocatedEmployeesCount = allActiveEmployeesListForTrend.stream()
+                            .filter(emp -> emp.getCurrentStatus() != null && 
+                                           (emp.getCurrentStatus().equalsIgnoreCase("Allocated") || 
+                                            emp.getCurrentStatus().equalsIgnoreCase("Active")) &&
+                                           (emp.getHireDate() == null || !emp.getHireDate().isAfter(loopMonth.withDayOfMonth(loopMonth.lengthOfMonth()))))
+                            .count();
+
+                    monthlyOverallUtilization = monthlyTotalActiveEmployees > 0 ? 
+                            (double) monthlyAllocatedEmployeesCount * 100 / monthlyTotalActiveEmployees : 0.0;
+
+                } catch (Exception e) {
+                    System.err.println("Error calculating utilization for trend for month " + loopMonth.format(DateTimeFormatter.ofPattern("yyyy-MM")) + ": " + e.getMessage());
+                    monthlyOverallUtilization = 0.0; // Default to 0 if error
                 }
+
+                trendData.add(UtilizationRateDTO.UtilizationTrendDTO.builder()
+                        .month(loopMonth.format(DateTimeFormatter.ofPattern("yyyy-MM")))
+                        .value(monthlyOverallUtilization)
+                        .build());
             }
-            
-            double overallUtilization = totalEmployees > 0 ? 
-                    (double) allocatedEmployees * 100 / totalEmployees : 0.0;
-            
-            // Build team utilization list from margin summary
-            List<UtilizationRateDTO.TeamUtilizationDTO> teamUtilizations = marginSummary.getTeams().stream()
-                    .map(team -> UtilizationRateDTO.TeamUtilizationDTO.builder()
-                            .team(team.getName())
-                            .rate(team.getMargin() != null ? team.getMargin().doubleValue() : 0.0)
-                            .build())
-                    .collect(Collectors.toList());
-            
-            // Build trend data (mock for now - could be enhanced with historical data)
-            List<UtilizationRateDTO.UtilizationTrendDTO> trendData = Arrays.asList(
-                    UtilizationRateDTO.UtilizationTrendDTO.builder()
-                            .month("Jan").value(75.0).build(),
-                    UtilizationRateDTO.UtilizationTrendDTO.builder()
-                            .month("Feb").value(82.0).build(),
-                    UtilizationRateDTO.UtilizationTrendDTO.builder()
-                            .month("Mar").value(overallUtilization).build()
-            );
+            Collections.reverse(trendData); // Ensure chronological order
             
             return UtilizationRateDTO.builder()
                     .overall(overallUtilization)
@@ -588,6 +710,8 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
             
         } catch (Exception e) {
+            // Log the exception
+            // log.error("Error building utilization rate widget: {}", e.getMessage(), e);
             // Return fallback data if error occurs
             return UtilizationRateDTO.builder()
                     .overall(0.0)

@@ -4,8 +4,7 @@
 -- Disable foreign key checks for bulk insert
 SET FOREIGN_KEY_CHECKS=0;
 
--- Truncate existing data (optional, uncomment if needed)
-/*
+-- Truncate existing data
 TRUNCATE TABLE users;
 TRUNCATE TABLE roles;
 TRUNCATE TABLE permissions;
@@ -17,41 +16,47 @@ TRUNCATE TABLE teams;
 TRUNCATE TABLE employees;
 TRUNCATE TABLE employee_skills;
 TRUNCATE TABLE project_history;
-TRUNCATE TABLE employee_status_log;
 TRUNCATE TABLE opportunities;
+TRUNCATE TABLE opportunity_activity_logs;
 TRUNCATE TABLE opportunity_assignments;
+TRUNCATE TABLE opportunity_attachments;
+TRUNCATE TABLE opportunity_field_changes;
 TRUNCATE TABLE opportunity_notes;
+TRUNCATE TABLE opportunity_requirements;
+TRUNCATE TABLE opportunity_sync_details;
+TRUNCATE TABLE opportunity_sync_log_entries;
+TRUNCATE TABLE opportunity_sync_logs;
+TRUNCATE TABLE opportunity_tags;
 TRUNCATE TABLE contracts;
 TRUNCATE TABLE contract_payment_terms;
 TRUNCATE TABLE contract_employees;
 TRUNCATE TABLE contract_files;
 TRUNCATE TABLE employee_costs;
 TRUNCATE TABLE employee_revenues;
-TRUNCATE TABLE sales_kpis;
+TRUNCATE TABLE refresh_tokens;
 TRUNCATE TABLE system_configs;
-TRUNCATE TABLE notifications;
-*/
 
 -- Users & Authorization
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `full_name`, `avatar_url`, `enabled`, `account_non_expired`, `account_non_locked`, `credentials_non_expired`, `created_at`, `updated_at`, `last_login_at`, `password_changed_at`) VALUES
-(1, 'admin', 'admin@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Admin User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(2, 'manager', 'manager@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Manager User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(3, 'employee1', 'employee1@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(4, 'employee2', 'employee2@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Two', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(5, 'sales1', 'sales1@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Sales Person One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(6, 'sales2', 'sales2@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Sales Person Two', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(7, 'dev_lead1', 'devlead1@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Dev Lead One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(8, 'hr_manager', 'hr.manager@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'HR Manager', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(9, 'accountant', 'accountant@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Accountant User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(10, 'ceo', 'ceo@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Chief Executive Officer', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(11, 'employee3', 'employee3@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Three', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(12, 'employee4', 'employee4@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Four', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(13, 'employee5', 'employee5@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Five', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(14, 'employee6', 'employee6@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Six', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(15, 'employee7', 'employee7@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Seven', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(16, 'employee8', 'employee8@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Eight', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(17, 'employee9', 'employee9@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Nine', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
-(18, 'employee10', 'employee10@example.com', '$2a$10$sF2vQ0sP.m0vV9eZ6q9zHO.uH/WwR/E/3r9H4w.B4/PzJ0yS4lK0e', 'Employee Ten', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL);
+(1, 'admin', 'admin@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Admin User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(2, 'manager', 'manager@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Manager User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(3, 'employee1', 'employee1@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(4, 'employee2', 'employee2@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Two', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(5, 'sales1', 'sales1@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Sales Person One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(6, 'sales2', 'sales2@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Sales Person Two', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(7, 'dev_lead1', 'devlead1@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Dev Lead One', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(8, 'hr_manager', 'hr.manager@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'HR Manager', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(9, 'accountant', 'accountant@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Accountant User', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(10, 'ceo', 'ceo@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Chief Executive Officer', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(11, 'employee3', 'employee3@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Three', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(12, 'employee4', 'employee4@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Four', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(13, 'employee5', 'employee5@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Five', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(14, 'employee6', 'employee6@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Six', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(15, 'employee7', 'employee7@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Seven', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(16, 'employee8', 'employee8@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Eight', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(17, 'employee9', 'employee9@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Nine', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(18, 'employee10', 'employee10@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Employee Ten', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL),
+(19, 'admin123', 'admin123@example.com', '$2a$10$UYvybjLxhdkQG0kyP493keEeXEngUXwSYQnzAwDxwLzHGbQ9dq5IG', 'Admin User New', NULL, 1, 1, 1, 1, NOW(), NOW(), NULL, NULL);
 
 INSERT INTO `roles` (`id`, `name`, `description`, `created_at`, `updated_at`) VALUES
 (1, 'ROLE_ADMIN', 'Administrator role with full access', NOW(), NOW()),
@@ -232,7 +237,8 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 (15, 3),
 (16, 3),
 (17, 3),
-(18, 3);
+(18, 3),
+(19, 1); -- admin123 has ROLE_ADMIN
 
 -- Role Permissions defined from markdown
 INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
@@ -476,31 +482,25 @@ UPDATE `employees` SET `reporting_leader_id` = 4 WHERE `id` = 3; -- Carol report
 UPDATE `employees` SET `reporting_leader_id` = 5 WHERE `id` = 9; -- Ivy reports to Eve
 
 -- Employee Skills
-INSERT INTO `employee_skills` (`id`, `employee_id`, `skill_id`, `years_experience`, `self_assessment_level`, `leader_assessment_level`, `self_comment`, `leader_comment`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES
-(1, 1, 1, 3.5, 'Proficient', 'Proficient', 'Comfortable with Java 8+', 'Strong Java skills', NOW(), NOW(), 1, 1),
-(2, 1, 4, 3.0, 'Proficient', 'Intermediate', 'Good experience with Spring Boot', 'Developing well in Spring Boot', NOW(), NOW(), 1, 1),
-(3, 2, 1, 5.0, 'Expert', 'Expert', 'Extensive Java experience', 'Our go-to Java expert', NOW(), NOW(), 1, 1),
-(4, 2, 4, 4.5, 'Expert', 'Expert', 'Deep understanding of Spring Boot', 'Excellent Spring Boot architect', NOW(), NOW(), 1, 1),
-(5, 2, 7, 4.0, 'Proficient', 'Proficient', 'MySQL for several projects', 'Solid MySQL knowledge', NOW(), NOW(), 1, 1),
-(6, 3, 12, 2.0, 'Intermediate', 'Intermediate', 'Improving communication', 'Good client interaction', NOW(), NOW(), 1, 1),
-(7, 3, 14, 2.5, 'Proficient', 'Intermediate', 'Good at finding solutions', 'Shows promise in problem solving', NOW(), NOW(), 1, 1),
-(8, 5, 2, 6.0, 'Expert', 'Expert', 'Python expert', 'Leads Python initiatives', NOW(), NOW(), 1, 1),
-(9, 5, 10, 4.0, 'Proficient', 'Proficient', 'Experienced with AWS services', 'Handles AWS deployments well', NOW(), NOW(), 1, 1),
-(10, 9, 3, 1.5, 'Intermediate', 'Beginner', 'Learning JavaScript and React', 'Eager to learn frontend tech', NOW(), NOW(), 1, 1),
-(11, 9, 5, 1.0, 'Beginner', 'Beginner', NULL, NULL, NOW(), NOW(), 1, 1),
-(12, 11, 1, 2.0, 'Intermediate', 'Intermediate', 'Java for test automation', NULL, NOW(), NOW(), 1, 1);
+INSERT INTO `employee_skills` (`id`, `employee_id`, `skill_id`, `years_experience`, `self_assessment_level`, `leader_assessment_level`, `self_comment`, `leader_comment`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, 3.5, 'Proficient', 'Proficient', 'Comfortable with Java 8+', 'Strong Java skills', NOW(), NOW()),
+(2, 1, 4, 3.0, 'Proficient', 'Intermediate', 'Good experience with Spring Boot', 'Developing well in Spring Boot', NOW(), NOW()),
+(3, 2, 1, 5.0, 'Expert', 'Expert', 'Extensive Java experience', 'Our go-to Java expert', NOW(), NOW()),
+(4, 2, 4, 4.5, 'Expert', 'Expert', 'Deep understanding of Spring Boot', 'Excellent Spring Boot architect', NOW(), NOW()),
+(5, 2, 7, 4.0, 'Proficient', 'Proficient', 'MySQL for several projects', 'Solid MySQL knowledge', NOW(), NOW()),
+(6, 3, 12, 2.0, 'Intermediate', 'Intermediate', 'Improving communication', 'Good client interaction', NOW(), NOW()),
+(7, 3, 14, 2.5, 'Proficient', 'Intermediate', 'Good at finding solutions', 'Shows promise in problem solving', NOW(), NOW()),
+(8, 5, 2, 6.0, 'Expert', 'Expert', 'Python expert', 'Leads Python initiatives', NOW(), NOW()),
+(9, 5, 10, 4.0, 'Proficient', 'Proficient', 'Experienced with AWS services', 'Handles AWS deployments well', NOW(), NOW()),
+(10, 9, 3, 1.5, 'Intermediate', 'Beginner', 'Learning JavaScript and React', 'Eager to learn frontend tech', NOW(), NOW()),
+(11, 9, 5, 1.0, 'Beginner', 'Beginner', NULL, NULL, NOW(), NOW()),
+(12, 11, 1, 2.0, 'Intermediate', 'Intermediate', 'Java for test automation', NULL, NOW(), NOW());
 
-
--- Employee Status Log
-INSERT INTO `employee_status_log` (`id`, `employee_id`, `status`, `project_name`, `client_name`, `note`, `start_date`, `expected_end_date`, `allocation_percentage`, `is_billable`, `contract_id`, `log_timestamp`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES
-(1, 1, 'Active - Project A', 'Project Alpha', 'Client X', 'Joined Project Alpha', '2023-01-15', '2023-12-31', 100, 1, 1, NOW(), NOW(), NOW(), 1, 1),
-(2, 2, 'Active - Project A', 'Project Alpha', 'Client X', 'Leading Project Alpha tasks', '2023-01-10', '2023-12-31', 100, 1, 1, NOW(), NOW(), NOW(), 1, 1),
-(3, 9, 'Active - Project B', 'Project Bravo', 'Client Y', 'Joined Project Bravo', '2023-02-01', '2024-01-31', 80, 1, 2, NOW(), NOW(), NOW(), 1, 1);
 
 -- Opportunities (10 opportunities)
 -- assigned_to_id refers to a user_id (typically sales user)
 -- created_by_id refers to a user_id
-INSERT INTO `opportunities` (`id`, `code`, `hubspot_id`, `name`, `description`, `client_name`, `client_contact`, `client_email`, `client_phone`, `client_address`, `client_website`, `client_industry`, `amount`, `currency`, `status`, `deal_size`, `source`, `external_id`, `closing_date`, `closing_probability`, `created_by_user_id`, `assigned_to_user_id`, `last_interaction_date`, `priority`, `follow_up_status`, `hubspot_created_at`, `hubspot_last_updated_at`, `sync_status`, `last_sync_at`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT INTO `opportunities` (`id`, `code`, `hubspot_id`, `name`, `description`, `client_name`, `client_contact`, `client_email`, `client_phone`, `client_address`, `client_website`, `client_industry`, `estimated_value`, `currency`, `deal_stage`, `deal_size`, `source`, `external_id`, `closing_date`, `closing_probability`, `created_by_id`, `assigned_sales_id`, `last_interaction_date`, `onsite_priority`, `follow_up_status`, `hubspot_created_at`, `hubspot_last_updated_at`, `sync_status`, `last_sync_at`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'OPP001', 'HS001', 'New CRM System for Acme Corp', 'Requirement for a new CRM system implementation.', 'Acme Corp', 'John Doe', 'john.doe@acme.com', '555-1111', '1 Acme Way', 'www.acme.com', 'Manufacturing', 50000.00, 'USD', 'Prospecting', 'Medium', 'Referral', NULL, '2024-08-30', 20, 5, 5, NOW(), 0, 'Initial Contact', NOW(), NOW(), 'Synced', NOW(), NOW(), NOW(), NULL),
 (2, 'OPP002', 'HS002', 'Mobile App Development for Beta Ltd', 'Development of iOS and Android apps.', 'Beta Ltd', 'Jane Smith', 'jane.smith@betaltd.com', '555-2222', '2 Beta Rd', 'www.betaltd.com', 'Retail', 75000.00, 'USD', 'Qualification', 'Large', 'Website', NULL, '2024-09-15', 40, 5, 5, NOW(), 1, 'Follow-up Scheduled', NOW(), NOW(), 'Synced', NOW(), NOW(), NOW(), NULL),
 (3, 'OPP003', 'HS003', 'Cloud Migration for Gamma Inc', 'Migrate on-premise servers to AWS.', 'Gamma Inc', 'Peter Jones', 'peter.jones@gammainc.com', '555-3333', '3 Gamma Blvd', 'www.gammainc.com', 'Finance', 120000.00, 'USD', 'Proposal Sent', 'Large', 'Partner', NULL, '2024-07-31', 60, 6, 6, NOW(), 1, 'Proposal Review', NOW(), NOW(), 'Synced', NOW(), NOW(), NOW(), NULL),
@@ -519,7 +519,7 @@ INSERT INTO `opportunity_assignments` (`id`, `opportunity_id`, `employee_id`, `a
 (3, 3, 2, NOW(), NOW(), NOW()); -- Bob Johnson (Senior SE) assigned to OPP003
 
 -- Opportunity Notes
-INSERT INTO `opportunity_notes` (`id`, `opportunity_id`, `author_user_id`, `content`, `activity_type`, `meeting_date`, `is_private`, `created_at`, `updated_at`) VALUES
+INSERT INTO `opportunity_notes` (`id`, `opportunity_id`, `author_id`, `note_content`, `activity_type`, `meeting_date`, `is_private`, `created_at`, `updated_at`) VALUES
 (1, 1, 5, 'Initial call with John Doe. Seems interested. Sent brochure.', 'Call', NOW(), 0, NOW(), NOW()),
 (2, 2, 5, 'Meeting scheduled for next week to discuss requirements.', 'Meeting', '2024-06-10 10:00:00', 0, NOW(), NOW()),
 (3, 3, 6, 'Proposal sent. They are reviewing with their technical team.', 'Email', NOW(), 0, NOW(), NOW()),
@@ -527,9 +527,9 @@ INSERT INTO `opportunity_notes` (`id`, `opportunity_id`, `author_user_id`, `cont
 
 -- Contracts (10 contracts)
 -- opportunity_id links to opportunities.
--- assigned_sales_user_id links to a sales user.
--- created_by_user_id and updated_by_user_id link to users.
-INSERT INTO `contracts` (`id`, `contract_code`, `name`, `client_name`, `opportunity_id`, `sign_date`, `effective_date`, `expiry_date`, `total_value`, `currency`, `contract_type`, `assigned_sales_user_id`, `status`, `description`, `created_at`, `updated_at`, `created_by_user_id`, `updated_by_user_id`, `deleted_at`) VALUES
+-- assigned_sales_id links to a sales user.
+-- created_by and updated_by link to users.
+INSERT INTO `contracts` (`id`, `contract_code`, `name`, `client_name`, `opportunity_id`, `sign_date`, `effective_date`, `expiry_date`, `total_value`, `currency`, `contract_type`, `assigned_sales_id`, `status`, `description`, `created_at`, `updated_at`, `created_by`, `updated_by`, `deleted_at`) VALUES
 (1, 'CTR001', 'CRM System for Acme Corp - Phase 1', 'Acme Corp', 1, '2024-06-01', '2024-06-15', '2025-06-14', 45000.00, 'USD', 'Fixed Price', 5, 'Active', 'Phase 1 of CRM implementation.', NOW(), NOW(), 5, 5, NULL),
 (2, 'CTR002', 'Mobile App Dev - Beta Ltd', 'Beta Ltd', 2, '2024-07-01', '2024-07-10', '2025-01-10', 70000.00, 'USD', 'Time & Material', 5, 'Pending Start', 'iOS and Android app development.', NOW(), NOW(), 5, 5, NULL),
 (3, 'CTR003', 'Cloud Migration - Gamma Inc', 'Gamma Inc', 3, '2024-05-15', '2024-06-01', '2024-12-01', 110000.00, 'USD', 'Fixed Price', 6, 'Active', 'AWS migration project.', NOW(), NOW(), 6, 6, NULL),
@@ -542,7 +542,7 @@ INSERT INTO `contracts` (`id`, `contract_code`, `name`, `client_name`, `opportun
 (10, 'CTR010', 'Project Phoenix - Epsilon Ent', 'Epsilon Enterprises', NULL, '2024-07-20', '2024-08-01', '2025-07-31', 150000.00, 'USD', 'Fixed Price', 5, 'Negotiation', 'Large scale development project.', NOW(), NOW(), 5, 5, NULL);
 
 -- Contract Payment Terms
-INSERT INTO `contract_payment_terms` (`id`, `contract_id`, `term_number`, `description`, `expected_payment_date`, `expected_amount`, `currency`, `payment_status`, `actual_payment_date`, `actual_amount_paid`, `notes`, `created_at`, `updated_at`, `created_by_user_id`, `updated_by_user_id`) VALUES
+INSERT INTO `contract_payment_terms` (`id`, `contract_id`, `term_number`, `description`, `expected_payment_date`, `expected_amount`, `currency`, `payment_status`, `actual_payment_date`, `actual_amount_paid`, `notes`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES
 (1, 1, 1, 'Upfront 50%', '2024-06-15', 22500.00, 'USD', 'Paid', '2024-06-14', 22500.00, 'Received', NOW(), NOW(), 5, 5),
 (2, 1, 2, 'Final 50% on Completion', '2025-06-14', 22500.00, 'USD', 'Pending', NULL, NULL, NULL, NOW(), NOW(), 5, 5),
 (3, 3, 1, 'Milestone 1', '2024-07-01', 40000.00, 'USD', 'Pending', NULL, NULL, NULL, NOW(), NOW(), 6, 6),
@@ -621,10 +621,10 @@ INSERT INTO `employee_revenues` (`id`, `employee_id`, `contract_id`, `year`, `mo
 
 
 -- System Configs
-INSERT INTO `system_configs` (`id`, `config_key`, `config_value`, `description`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES
-(1, 'SYSTEM_CURRENCY', 'USD', 'Default currency for the system', NOW(), NOW(), 1, 1),
-(2, 'MAX_SESSION_TIMEOUT', '3600', 'Maximum session timeout in seconds', NOW(), NOW(), 1, 1),
-(3, 'HUBSPOT_API_KEY', 'dummy_api_key_replace_me', 'API Key for Hubspot Integration', NOW(), NOW(), 1, 1);
+INSERT INTO `system_configs` (`id`, `config_key`, `config_value`, `description`, `created_at`, `updated_at`) VALUES
+(1, 'SYSTEM_CURRENCY', 'USD', 'Default currency for the system', NOW(), NOW()),
+(2, 'MAX_SESSION_TIMEOUT', '3600', 'Maximum session timeout in seconds', NOW(), NOW()),
+(3, 'HUBSPOT_API_KEY', 'dummy_api_key_replace_me', 'API Key for Hubspot Integration', NOW(), NOW());
 
 -- Enable foreign key checks
 SET FOREIGN_KEY_CHECKS=1;

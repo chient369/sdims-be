@@ -1,0 +1,1921 @@
+openapi: 3.0.3
+info:
+  title: Contract Module API
+  description: API để quản lý hợp đồng, bao gồm các điều khoản thanh toán, nhân viên tham gia và các tệp đính kèm.
+  version: 1.0.0
+servers:
+  - url: /api/v1 # Đường dẫn cơ sở cho các API này
+
+paths:
+  # ContractController
+  /contracts:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách tất cả hợp đồng với tùy chọn lọc và phân trang
+      operationId: getAllContracts
+      parameters:
+        - name: customerName
+          in: query
+          schema:
+            type: string
+        - name: contractCode
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: contractType
+          in: query
+          schema:
+            type: string
+        - name: salesId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: minAmount
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: maxAmount
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Số trang (0-based cho service, controller có thể chuyển đổi từ 1-based)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về danh sách hợp đồng đã phân trang
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractDTO'
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Contract
+      summary: Tạo một hợp đồng mới
+      operationId: createContract
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractCreateRequest'
+      responses:
+        '201':
+          description: Hợp đồng được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractDTO'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /contracts/{id}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy thông tin chi tiết một hợp đồng theo ID
+      operationId: getContractById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: includePaymentTerms
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: includeEmployees
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: includeFiles
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractDTO'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Contract
+      summary: Cập nhật một hợp đồng hiện có
+      operationId: updateContract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractUpdateRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractDTO'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Contract
+      summary: Xóa một hợp đồng
+      operationId: deleteContract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/code/{contractCode}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy thông tin hợp đồng theo mã hợp đồng
+      operationId: getContractByCode
+      parameters:
+        - name: contractCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractDTO'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/{id}/payment-terms:
+    get:
+      tags:
+        - Contract
+      summary: Lấy các điều khoản thanh toán cho một hợp đồng
+      operationId: getPaymentTermsByContractId
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseListContractPaymentTermDTO'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/{id}/employees:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách nhân viên được gán cho một hợp đồng
+      operationId: getEmployeesByContractIdFromContract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseListContractEmployeeDTO'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/{id}/files:
+    get:
+      tags:
+        - Contract
+      summary: Lấy các tệp đính kèm của một hợp đồng
+      operationId: getFilesByContractIdFromContract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseListContractFileDTO'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /contracts/employee/{employeeId}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách hợp đồng theo ID nhân viên
+      operationId: getContractsByEmployeeId
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractDTO'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/team/{teamId}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách hợp đồng theo ID đội nhóm
+      operationId: getContractsByTeamId
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractDTO'
+        '404':
+          description: Không tìm thấy đội nhóm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/opportunity/{opportunityId}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách hợp đồng theo ID cơ hội
+      operationId: getContractsByOpportunityId
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractDTO'
+        '404':
+          description: Không tìm thấy cơ hội
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /contracts/sales/{salesId}:
+    get:
+      tags:
+        - Contract
+      summary: Lấy danh sách hợp đồng theo ID người bán hàng (sales)
+      operationId: getContractsBySalesId
+      parameters:
+        - name: salesId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractDTO'
+        '404':
+          description: Không tìm thấy người bán hàng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ContractEmployeeController
+  /contracts/employees: # Base path for ContractEmployeeController
+    post:
+      tags:
+        - Contract Employee
+      summary: Gán một nhân viên vào một hợp đồng
+      operationId: assignEmployeeToContract
+      parameters:
+        - name: contractId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: employeeId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: allocationPercentage
+          in: query
+          required: false
+          schema:
+            type: number
+            format: bigdecimal # Custom format for BigDecimal
+            default: 100
+        - name: billRate
+          in: query
+          required: false
+          schema:
+            type: number
+            format: bigdecimal
+      responses:
+        '201':
+          description: Gán thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractEmployeeDTO'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy hợp đồng hoặc nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/employees/{id}:
+    get:
+      tags:
+        - Contract Employee
+      summary: Lấy thông tin chi tiết một nhân viên được gán cho hợp đồng theo ID của bản ghi gán
+      operationId: getContractEmployeeById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractEmployeeDTO'
+        '404':
+          description: Không tìm thấy bản ghi gán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Contract Employee
+      summary: Cập nhật thông tin gán nhân viên cho hợp đồng
+      operationId: updateContractEmployee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        # Các tham số khác được truyền qua @RequestParam
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          required: false # Assuming optional for update
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: allocationPercentage
+          in: query
+          required: false
+          schema:
+            type: number
+            format: bigdecimal
+        - name: billRate
+          in: query
+          required: false
+          schema:
+            type: number
+            format: bigdecimal
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractEmployeeDTO'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy bản ghi gán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Contract Employee
+      summary: Xóa một nhân viên khỏi hợp đồng
+      operationId: removeEmployeeFromContract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy bản ghi gán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /contracts/employees/employee/{employeeId}: # Note: This path is distinct from /contracts/employee/{employeeId}
+    get:
+      tags:
+        - Contract Employee
+      summary: Lấy danh sách các hợp đồng (dưới dạng ContractEmployeeDTO) mà một nhân viên cụ thể tham gia (phân trang)
+      operationId: getContractAssignmentsByEmployeeId # Renamed for clarity
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "startDate"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractEmployeeDTO'
+        '404':
+          description: Không tìm thấy nhân viên
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ContractFileController
+  /contracts/files/{id}:
+    get:
+      tags:
+        - Contract File
+      summary: Lấy thông tin một tệp đính kèm theo ID
+      operationId: getContractFileById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractFileDTO'
+        '404':
+          description: Không tìm thấy tệp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Contract File
+      summary: Xóa một tệp đính kèm
+      operationId: deleteContractFile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Xóa thành công
+        '404':
+          description: Không tìm thấy tệp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/files/{contractId}/upload: # Path from controller: /api/v1/contracts/files/{contractId}/upload
+    post:
+      tags:
+        - Contract File
+      summary: Tải lên một tệp cho hợp đồng
+      operationId: uploadContractFile
+      parameters:
+        - name: contractId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: description
+          in: query # Changed from @RequestParam to query parameter
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Tải lên thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractFileDTO'
+        '400':
+          description: Lỗi file hoặc dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/files/search:
+    get:
+      tags:
+        - Contract File
+      summary: Tìm kiếm tệp theo tên
+      operationId: searchContractFilesByName
+      parameters:
+        - name: fileName
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractFileDTO'
+
+  /contracts/files/type/{fileType}:
+    get:
+      tags:
+        - Contract File
+      summary: Lấy các tệp theo loại tệp
+      operationId: getContractFilesByType
+      parameters:
+        - name: fileType
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "createdAt"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractFileDTO'
+
+  # ContractPaymentTermController
+  /contracts/payment-terms/{id}:
+    get:
+      tags:
+        - Contract Payment Term
+      summary: Lấy thông tin một điều khoản thanh toán theo ID
+      operationId: getContractPaymentTermById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractPaymentTermDTO'
+        '404':
+          description: Không tìm thấy điều khoản thanh toán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/payment-terms/{id}/status:
+    put:
+      tags:
+        - Contract Payment Term
+      summary: Cập nhật trạng thái của một điều khoản thanh toán
+      operationId: updateContractPaymentTermStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: paidDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: paidAmount
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+        - name: notes
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseContractPaymentTermDTO'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Không tìm thấy điều khoản thanh toán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /contracts/payment-terms/overdue:
+    get:
+      tags:
+        - Contract Payment Term
+      summary: Lấy danh sách các điều khoản thanh toán quá hạn (phân trang)
+      operationId: getOverduePaymentTerms
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "dueDate"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "asc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractPaymentTermDTO'
+
+  /contracts/payment-terms/due-soon:
+    get:
+      tags:
+        - Contract Payment Term
+      summary: Lấy danh sách các điều khoản thanh toán sắp đến hạn (phân trang)
+      operationId: getPaymentTermsDueSoon
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "dueDate"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "asc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractPaymentTermDTO'
+
+  /contracts/payment-terms/status/{status}:
+    get:
+      tags:
+        - Contract Payment Term
+      summary: Lấy danh sách các điều khoản thanh toán theo trạng thái (phân trang)
+      operationId: getPaymentTermsByStatus
+      parameters:
+        - name: status
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "dueDate"
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            default: "asc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePageContractPaymentTermDTO'
+
+components:
+  schemas:
+    # Common Schemas (Copy from previous modules or define if different)
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        code:
+          type: integer
+          example: 400
+        errorCode:
+          type: string
+          nullable: true
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Input validation failed"
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          nullable: true
+          
+    SpringPage: # Generic Spring Page structure, assuming T is the content type
+      type: object
+      properties:
+        content:
+          type: array
+          items: 
+            type: object # This will be replaced by $ref to specific DTO for each Page<T>
+        pageable:
+          type: object # Can be string "INSTANCE" or a PageableInfo object
+          properties:
+            sort:
+              type: object
+              properties:
+                sorted:
+                  type: boolean
+                unsorted:
+                  type: boolean
+                empty:
+                  type: boolean
+            offset:
+              type: integer
+              format: int64
+            pageNumber:
+              type: integer
+            pageSize:
+              type: integer
+            paged:
+              type: boolean
+            unpaged:
+              type: boolean
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        last:
+          type: boolean
+        size:
+          type: integer
+        number: # current page number (0-indexed)
+          type: integer
+        sort: # Can also be a more complex object
+          type: object
+          properties:
+            sorted:
+              type: boolean
+            unsorted:
+              type: boolean
+            empty:
+              type: boolean
+        numberOfElements:
+          type: integer
+        first:
+          type: boolean
+        empty:
+          type: boolean
+
+    # Basic DTOs from other modules (assumed structure)
+    UserBasicDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+    OpportunityBasicDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    EmployeeBasicDTO: # From HRM
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          # employeeCode: string (optional, for more detail)
+
+    # Contract Module DTOs
+    PaymentStatusSummaryDTO:
+      type: object
+      properties:
+        status:
+          type: string
+          nullable: true
+        paidAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        totalAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        paidPercentage:
+          type: number
+          format: bigdecimal
+          nullable: true
+        nextDueDate:
+          type: string
+          format: date
+          nullable: true
+        nextDueAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        totalTerms:
+          type: integer
+          nullable: true
+        paidTerms:
+          type: integer
+          nullable: true
+        remainingAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+
+    ContractDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        contractCode:
+          type: string
+          nullable: true
+        name:
+          type: string
+        customerName:
+          type: string
+        contractType:
+          type: string
+          nullable: true
+        amount:
+          type: number
+          format: bigdecimal # Custom format for BigDecimal
+        currency:
+          type: string
+          nullable: true
+        signDate:
+          type: string
+          format: date
+          nullable: true
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          nullable: true
+        salesPerson:
+          $ref: '#/components/schemas/UserBasicDTO'
+          nullable: true
+        relatedOpportunity:
+          $ref: '#/components/schemas/OpportunityBasicDTO'
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        paymentStatus:
+          $ref: '#/components/schemas/PaymentStatusSummaryDTO'
+          nullable: true
+        employeeCount:
+          type: integer
+          nullable: true
+        createdBy:
+          $ref: '#/components/schemas/UserBasicDTO'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        updatedBy:
+          $ref: '#/components/schemas/UserBasicDTO'
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        # Controller method for getContractById also includes:
+        # paymentTerms: (List<ContractPaymentTermDTO>)
+        # employees: (List<ContractEmployeeDTO>)
+        # files: (List<ContractFileDTO>)
+        # These are typically included based on query params, so making them optional here
+        paymentTerms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractPaymentTermDTO'
+          nullable: true
+          description: "Included if 'includePaymentTerms' is true"
+        employees:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractEmployeeDTO'
+          nullable: true
+          description: "Included if 'includeEmployees' is true"
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractFileDTO'
+          nullable: true
+          description: "Included if 'includeFiles' is true"
+
+
+    ContractPaymentTermDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        termNumber:
+          type: integer
+        dueDate:
+          type: string
+          format: date
+        amount:
+          type: number
+          format: bigdecimal
+        percentage:
+          type: number
+          format: bigdecimal
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        paidDate:
+          type: string
+          format: date
+          nullable: true
+        paidAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    ContractFileDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        type:
+          type: string
+          nullable: true
+        size:
+          type: integer
+          format: int64
+          nullable: true
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedBy:
+          $ref: '#/components/schemas/UserBasicDTO'
+          nullable: true
+        url:
+          type: string
+          format: uri # Or just string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    ContractEmployeeDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        employee:
+          $ref: '#/components/schemas/EmployeeBasicDTO' # from HRM module
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        allocationPercentage:
+          type: number
+          format: bigdecimal
+          nullable: true
+        billRate:
+          type: number
+          format: bigdecimal
+          nullable: true
+        role:
+          type: string
+          nullable: true
+
+    # Request DTOs for Contract Creation/Update
+    ContractCreatePaymentTermRequest:
+      type: object
+      properties:
+        termNumber:
+          type: integer
+        dueDate:
+          type: string
+          format: date
+        amount:
+          type: number
+          format: bigdecimal
+        percentage:
+          type: number
+          format: bigdecimal
+        description:
+          type: string
+          nullable: true
+      required:
+        - termNumber
+        - dueDate
+        - amount
+        - percentage
+        
+    ContractCreateEmployeeAssignmentRequest:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        allocationPercentage:
+          type: number
+          format: bigdecimal
+        billRate:
+          type: number
+          format: bigdecimal
+          nullable: true
+        role:
+          type: string
+          nullable: true
+      required:
+        - employeeId
+        - startDate
+        - endDate
+        - allocationPercentage
+        
+    ContractCreateAttachmentRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        base64Content:
+          type: string
+          format: byte # Represents base64 encoded string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+        - type
+        - base64Content
+
+    ContractCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        contractCode:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+        contractType:
+          type: string
+          enum: ["FixedPrice", "TimeAndMaterial", "Retainer", "Maintenance", "Other"]
+        amount:
+          type: number
+          format: bigdecimal
+        signDate:
+          type: string
+          format: date
+          nullable: true
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: ["Draft", "InReview", "Approved", "Active", "InProgress", "OnHold", "Completed", "Terminated", "Expired", "Cancelled"]
+        salesId:
+          type: integer
+          format: int64
+        opportunityId:
+          type: integer
+          format: int64
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        paymentTerms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractCreatePaymentTermRequest'
+        employeeAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractCreateEmployeeAssignmentRequest'
+          nullable: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractCreateAttachmentRequest'
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+      required:
+        - name
+        - customerName
+        - amount
+        - startDate
+        - endDate
+        - salesId
+        - paymentTerms
+        
+    ContractUpdatePaymentTermRequest:
+      type: object
+      properties:
+        id: # For existing terms
+          type: integer
+          format: int64
+          nullable: true
+        termNumber:
+          type: integer
+          nullable: true # Assuming optional for update
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        amount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        percentage:
+          type: number
+          format: bigdecimal
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: ["unpaid", "partial", "paid", "overdue", "cancelled"]
+          nullable: true
+        paidDate:
+          type: string
+          format: date
+          nullable: true
+        paidAmount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          
+    ContractUpdateEmployeeAssignmentRequest:
+      type: object
+      properties:
+        id: # For existing assignments
+          type: integer
+          format: int64
+          nullable: true
+        employeeId:
+          type: integer
+          format: int64
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        allocationPercentage:
+          type: number
+          format: bigdecimal
+          nullable: true
+        billRate:
+          type: number
+          format: bigdecimal
+          nullable: true
+        role:
+          type: string
+          nullable: true
+
+    ContractUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        contractCode:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+          nullable: true
+        contractType:
+          type: string
+          enum: ["FixedPrice", "TimeAndMaterial", "Retainer", "Maintenance", "Other"]
+          nullable: true
+        amount:
+          type: number
+          format: bigdecimal
+          nullable: true
+        signDate:
+          type: string
+          format: date
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: ["Draft", "InReview", "Approved", "Active", "InProgress", "OnHold", "Completed", "Terminated", "Expired", "Cancelled"]
+          nullable: true
+        salesId:
+          type: integer
+          format: int64
+          nullable: true
+        opportunityId:
+          type: integer
+          format: int64
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        paymentTerms:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractUpdatePaymentTermRequest'
+          nullable: true
+        employeeAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractUpdateEmployeeAssignmentRequest'
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    # ApiResponse Wrappers for Contract Module
+    ApiResponseContractDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          $ref: '#/components/schemas/ContractDTO'
+        # ... other ApiResponse fields if any
+        
+    ApiResponsePageContractDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data: # This should represent Page<ContractDTO>
+          type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContractDTO'
+            # Other SpringPage properties like pageable, totalPages, totalElements etc.
+            pageable: # Simplified representation
+              type: object
+              properties:
+                pageNumber: { type: integer }
+                pageSize: { type: integer }
+            totalPages: { type: integer }
+            totalElements: { type: integer, format: int64 }
+            # ... and others from SpringPage if needed
+            
+    ApiResponseListContractPaymentTermDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractPaymentTermDTO'
+            
+    ApiResponseListContractEmployeeDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractEmployeeDTO'
+            
+    ApiResponseListContractFileDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContractFileDTO'
+
+    ApiResponseContractEmployeeDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          $ref: '#/components/schemas/ContractEmployeeDTO'
+          
+    ApiResponsePageContractEmployeeDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: object # Page<ContractEmployeeDTO>
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContractEmployeeDTO'
+            pageable:
+              type: object
+              properties:
+                pageNumber: { type: integer }
+                pageSize: { type: integer }
+            totalPages: { type: integer }
+            totalElements: { type: integer, format: int64 }
+            
+    ApiResponseContractFileDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          $ref: '#/components/schemas/ContractFileDTO'
+          
+    ApiResponsePageContractFileDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: object # Page<ContractFileDTO>
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContractFileDTO'
+            pageable:
+              type: object
+              properties:
+                pageNumber: { type: integer }
+                pageSize: { type: integer }
+            totalPages: { type: integer }
+            totalElements: { type: integer, format: int64 }
+
+    ApiResponseContractPaymentTermDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          $ref: '#/components/schemas/ContractPaymentTermDTO'
+          
+    ApiResponsePageContractPaymentTermDTO:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        data:
+          type: object # Page<ContractPaymentTermDTO>
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContractPaymentTermDTO'
+            pageable:
+              type: object
+              properties:
+                pageNumber: { type: integer }
+                pageSize: { type: integer }
+            totalPages: { type: integer }
+            totalElements: { type: integer, format: int64 }

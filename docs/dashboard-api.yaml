@@ -1,0 +1,1350 @@
+openapi: 3.0.3
+info:
+  title: Dashboard & Reports API
+  description: API để quản lý dữ liệu dashboard và xuất các báo cáo chi tiết.
+  version: 1.0.0
+servers:
+  - url: /api/v1 # Đường dẫn cơ sở cho các API này
+
+paths:
+  # DashboardController
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Lấy dữ liệu tổng hợp cho dashboard
+      operationId: getDashboardSummary
+      parameters:
+        - name: fromDate
+          in: query
+          description: Ngày bắt đầu (yyyy-MM-dd, mặc định đầu tháng hiện tại)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          description: Ngày kết thúc (yyyy-MM-dd, mặc định ngày hiện tại)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: teamId
+          in: query
+          description: Lọc theo ID đội nhóm
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: widgets
+          in: query
+          description: Danh sách các widget cần lấy dữ liệu (ví dụ opportunity_status, margin_distribution)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Thành công, trả về dữ liệu tổng hợp dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseDashboardSummary'
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ReportController
+  /reports/employee-list:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo chi tiết danh sách nhân viên (API-RPT-002)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file (Excel, CSV - tùy thuộc vào service). Schema này mô tả response JSON.
+      operationId: getEmployeeListReport
+      parameters:
+        - name: teamId
+          in: query
+          schema:
+            type: integer
+        - name: position
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: skills
+          in: query
+          schema:
+            type: array
+            items:
+              type: integer
+        - name: minExperience
+          in: query
+          schema:
+            type: integer
+        - name: projectId
+          in: query
+          schema:
+            type: integer
+        - name: utilization
+          in: query
+          schema:
+            type: string
+        - name: includeSkills
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: includeProjects
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          description: Loại export (mặc định 'json', có thể hỗ trợ 'excel', 'csv')
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          description: Số trang (1-based, mặc định 1)
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          description: Kích thước trang (mặc định 50)
+          schema:
+            type: integer
+            default: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "name"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "asc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo nhân viên (dạng JSON nếu exportType=json)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseEmployeeReport'
+            # text/csv: (nếu exportType=csv)
+            #   schema:
+            #     type: string
+            #     format: binary
+            # application/vnd.ms-excel: (nếu exportType=excel)
+            #   schema:
+            #     type: string
+            #     format: binary
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reports/margin-detail:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo chi tiết lợi nhuận theo nhân viên/đội nhóm (API-RPT-003)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file. Schema này mô tả response JSON.
+      operationId: getMarginDetailReport
+      parameters:
+        - name: teamId
+          in: query
+          schema:
+            type: integer
+        - name: employeeId
+          in: query
+          schema:
+            type: integer
+        - name: period
+          in: query
+          description: Khoảng thời gian (ví dụ 'month', 'quarter', 'year')
+          schema:
+            type: string
+            default: "month"
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: marginThreshold
+          in: query
+          description: Ngưỡng lợi nhuận (ví dụ 'Red', 'Yellow', 'Green' hoặc giá trị số)
+          schema:
+            type: string
+        - name: groupBy
+          in: query
+          description: Nhóm theo (employee, team)
+          schema:
+            type: string
+            default: "employee"
+            enum: ["employee", "team"]
+        - name: includeDetails
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          description: Số trang (1-based, mặc định 1)
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "margin"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo lợi nhuận
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseMarginReport'
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reports/opportunity-list:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo chi tiết danh sách cơ hội (API-RPT-004)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file. Schema này mô tả response JSON (sử dụng cấu trúc chung nếu không có DTO cụ thể).
+      operationId: getOpportunityListReport
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: salesId
+          in: query
+          schema:
+            type: integer
+        - name: leaderId
+          in: query
+          schema:
+            type: integer
+        - name: dealStage
+          in: query
+          schema:
+            type: string
+        - name: followUpStatus
+          in: query
+          schema:
+            type: string
+        - name: onsite
+          in: query
+          schema:
+            type: boolean
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: keyword
+          in: query
+          schema:
+            type: string
+        - name: includeNotes
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: includeLeaders
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "lastInteractionDate"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo cơ hội
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseObject' # Hoặc một DTO cụ thể hơn nếu có
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reports/contract-list:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo chi tiết danh sách hợp đồng (API-RPT-005)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file. Schema này mô tả response JSON.
+      operationId: getContractListReport
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: salesId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: opportunityId
+          in: query
+          schema:
+            type: integer
+        - name: minValue
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: maxValue
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: expiryFromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: expiryToDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          schema:
+            type: string
+        - name: includePayments
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: includeEmployees
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "signedDate"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo hợp đồng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseObject' # Hoặc một DTO cụ thể hơn
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reports/payment-status:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo chi tiết trạng thái thanh toán (API-RPT-006)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file. Schema này mô tả response JSON.
+      operationId: getPaymentStatusReport
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: salesId
+          in: query
+          schema:
+            type: integer
+        - name: contractId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paidFromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paidToDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: minAmount
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: maxAmount
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: includeDetails
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "dueDate"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "asc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo trạng thái thanh toán
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseObject' # Hoặc một DTO cụ thể hơn
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reports/kpi-progress:
+    get:
+      tags:
+        - Reports
+      summary: Lấy báo cáo tiến độ KPI sales (API-RPT-007)
+      description: Hỗ trợ xuất dữ liệu dạng JSON hoặc file. Schema này mô tả response JSON.
+      operationId: getKpiProgressReport
+      parameters:
+        - name: salesId
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: quarter
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: minAchievement
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: maxAchievement
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: includeDetails
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: exportType
+          in: query
+          schema:
+            type: string
+            default: "json"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: "achievementPercentage"
+        - name: sortDir
+          in: query
+          schema:
+            type: string
+            default: "desc"
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Thành công, trả về báo cáo KPI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseObject' # Hoặc một DTO cụ thể hơn
+        '400':
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    # Common Schemas (đã định nghĩa ở HRM, có thể tham chiếu hoặc định nghĩa lại nếu cần tùy chỉnh)
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+    PageableInfo: # Lấy từ HRM module, giả sử cấu trúc giống nhau
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        sort:
+          type: string
+          
+    # Dashboard DTOs
+    DashboardDateRangeDTO:
+      type: object
+      properties:
+        fromDate:
+          type: string
+          format: date
+        toDate:
+          type: string
+          format: date
+
+    OpportunityStatusWidgetByStatusDTO:
+      type: object
+      properties:
+        green:
+          type: integer
+        yellow:
+          type: integer
+        red:
+          type: integer
+    OpportunityStatusWidgetDealStageDTO:
+      type: object
+      properties:
+        stage:
+          type: string
+        count:
+          type: integer
+    OpportunityStatusWidgetTopOpportunityDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        customer:
+          type: string
+        value:
+          type: integer
+          format: int64
+        stage:
+          type: string
+        lastInteraction:
+          type: string # Nên là date-time
+          format: date-time 
+          nullable: true
+    OpportunityStatusDTO:
+      type: object
+      properties:
+        totalOpportunities:
+          type: integer
+        byStatus:
+          $ref: '#/components/schemas/OpportunityStatusWidgetByStatusDTO'
+        byDealStage:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityStatusWidgetDealStageDTO'
+        topOpportunities:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityStatusWidgetTopOpportunityDTO'
+
+    EmployeeStatusWidgetByStatusDTO:
+      type: object
+      properties:
+        allocated:
+          type: integer
+        available:
+          type: integer
+        endingSoon:
+          type: integer
+        onLeave:
+          type: integer
+    EmployeeStatusWidgetEmployeeBasicDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        projectEndDate:
+          type: string
+          format: date
+          nullable: true
+    EmployeeStatusDTO:
+      type: object
+      properties:
+        totalEmployees:
+          type: integer
+        byStatus:
+          $ref: '#/components/schemas/EmployeeStatusWidgetByStatusDTO'
+        endingSoonList:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeStatusWidgetEmployeeBasicDTO'
+
+    MarginDistributionWidgetCategoryDTO:
+      type: object
+      properties:
+        count:
+          type: integer
+        percentage:
+          type: number
+          format: double
+    MarginDistributionWidgetDistributionDTO:
+      type: object
+      properties:
+        green:
+          $ref: '#/components/schemas/MarginDistributionWidgetCategoryDTO'
+        yellow:
+          $ref: '#/components/schemas/MarginDistributionWidgetCategoryDTO'
+        red:
+          $ref: '#/components/schemas/MarginDistributionWidgetCategoryDTO'
+    MarginDistributionWidgetTrendItemDTO:
+      type: object
+      properties:
+        month:
+          type: string
+        value:
+          type: number
+          format: double
+    MarginDistributionDTO:
+      type: object
+      properties:
+        totalEmployees:
+          type: integer
+        distribution:
+          $ref: '#/components/schemas/MarginDistributionWidgetDistributionDTO'
+        trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginDistributionWidgetTrendItemDTO'
+            
+    RevenueSummaryWidgetPeriodDTO:
+      type: object
+      properties:
+        target:
+          type: integer
+          format: int64
+        actual:
+          type: integer
+          format: int64
+        achievement:
+          type: number
+          format: double
+          nullable: true
+    RevenueSummaryWidgetContractsDTO:
+      type: object
+      properties:
+        total:
+          type: integer
+        newlyAdded:
+          type: integer
+    RevenueSummaryWidgetPaymentDTO:
+      type: object
+      properties:
+        totalDue:
+          type: integer
+          format: int64
+        overdue:
+          type: integer
+          format: int64
+        upcoming:
+          type: integer
+          format: int64
+    RevenueSummaryDTO:
+      type: object
+      properties:
+        currentMonth:
+          $ref: '#/components/schemas/RevenueSummaryWidgetPeriodDTO'
+        currentQuarter:
+          $ref: '#/components/schemas/RevenueSummaryWidgetPeriodDTO'
+        ytd:
+          $ref: '#/components/schemas/RevenueSummaryWidgetPeriodDTO'
+        contracts:
+          $ref: '#/components/schemas/RevenueSummaryWidgetContractsDTO'
+        payment:
+          $ref: '#/components/schemas/RevenueSummaryWidgetPaymentDTO'
+
+    UtilizationRateWidgetTeamDTO:
+      type: object
+      properties:
+        team:
+          type: string
+        rate:
+          type: number
+          format: double
+    UtilizationRateWidgetTrendDTO:
+      type: object
+      properties:
+        month:
+          type: string
+        value:
+          type: number
+          format: double
+    UtilizationRateDTO:
+      type: object
+      properties:
+        overall:
+          type: number
+          format: double
+          nullable: true
+        byTeam:
+          type: array
+          items:
+            $ref: '#/components/schemas/UtilizationRateWidgetTeamDTO'
+        trend:
+          type: array
+          items:
+            $ref: '#/components/schemas/UtilizationRateWidgetTrendDTO'
+
+    DashboardWidgetsDTO:
+      type: object
+      properties:
+        opportunityStatus:
+          $ref: '#/components/schemas/OpportunityStatusDTO'
+          nullable: true
+        marginDistribution:
+          $ref: '#/components/schemas/MarginDistributionDTO'
+          nullable: true
+        revenueSummary:
+          $ref: '#/components/schemas/RevenueSummaryDTO'
+          nullable: true
+        employeeStatus:
+          $ref: '#/components/schemas/EmployeeStatusDTO'
+          nullable: true
+        utilizationRate:
+          $ref: '#/components/schemas/UtilizationRateDTO'
+          nullable: true
+    DashboardSummaryDTO:
+      type: object
+      properties:
+        dateRange:
+          $ref: '#/components/schemas/DashboardDateRangeDTO'
+        widgets:
+          $ref: '#/components/schemas/DashboardWidgetsDTO'
+
+    # Report DTOs (EmployeeReportDTO)
+    EmployeeReportInfoDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        reportName:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        filters:
+          type: object # Hoặc schema cụ thể nếu biết
+          nullable: true
+    EmployeeReportTeamLeaderDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    EmployeeReportTeamDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        leader:
+          $ref: '#/components/schemas/EmployeeReportTeamLeaderDTO'
+          nullable: true
+    EmployeeReportProjectDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        customer:
+          type: string
+          nullable: true
+        allocation:
+          type: integer
+          nullable: true
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+    EmployeeReportSkillDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        level:
+          type: string
+          nullable: true
+        years:
+          type: integer
+          nullable: true
+    EmployeeReportDetailDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        employeeCode:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        position:
+          type: string
+          nullable: true
+        team:
+          $ref: '#/components/schemas/EmployeeReportTeamDTO'
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        currentProject:
+          $ref: '#/components/schemas/EmployeeReportProjectDTO'
+          nullable: true
+        utilization:
+          type: integer
+          nullable: true
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeReportSkillDTO'
+          nullable: true
+        joinDate:
+          type: string
+          format: date
+          nullable: true
+        totalExperience:
+          type: integer
+          nullable: true
+    EmployeeReportTopSkillDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+    EmployeeReportSummaryMetricsDTO: # from EmployeeReportDTO
+      type: object
+      properties:
+        totalEmployees:
+          type: integer
+        allocatedCount:
+          type: integer
+        availableCount:
+          type: integer
+        endingSoonCount:
+          type: integer
+        utilizationRate:
+          type: number
+          format: double
+          nullable: true
+        topSkills:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeReportTopSkillDTO'
+          nullable: true
+    EmployeeReportPageableDTO: # from EmployeeReportDTO & MarginReportDTO (tương tự PageableInfo)
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer # Nên là int64 nếu có thể lớn
+        sort:
+          type: string
+          nullable: true
+    EmployeeReportDTO:
+      type: object
+      properties:
+        reportInfo:
+          $ref: '#/components/schemas/EmployeeReportInfoDTO'
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeReportDetailDTO'
+        summaryMetrics:
+          $ref: '#/components/schemas/EmployeeReportSummaryMetricsDTO'
+        pageable:
+          $ref: '#/components/schemas/EmployeeReportPageableDTO'
+
+    # Report DTOs (MarginReportDTO)
+    MarginReportInfoDTO: # from MarginReportDTO
+      type: object
+      properties:
+        reportName:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        period:
+          type: string
+          nullable: true
+        fromDate:
+          type: string
+          format: date
+          nullable: true
+        toDate:
+          type: string
+          format: date
+          nullable: true
+        filters:
+          type: object
+          nullable: true
+    MarginReportDistributionDTO: # from MarginReportDTO
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+        values:
+          type: array
+          items:
+            type: integer
+    MarginReportTrendDTO: # from MarginReportDTO
+      type: object
+      properties:
+        period:
+          type: string
+        value:
+          type: number
+          format: double
+    MarginReportSummaryMetricsDTO: # from MarginReportDTO
+      type: object
+      properties:
+        averageMargin:
+          type: number
+          format: double
+          nullable: true
+        redCount:
+          type: integer
+        yellowCount:
+          type: integer
+        greenCount:
+          type: integer
+        marginDistribution:
+          $ref: '#/components/schemas/MarginReportDistributionDTO'
+          nullable: true
+        marginTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginReportTrendDTO'
+          nullable: true
+    MarginReportTeamBasicDTO: # from MarginReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    MarginReportLeaderDTO: # from MarginReportDTO
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    MarginReportMarginDataDTO: # from MarginReportDTO (for Employee)
+      type: object
+      properties:
+        period:
+          type: string
+        cost:
+          type: integer
+          format: int64
+        revenue:
+          type: integer
+          format: int64
+        margin:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    MarginReportEmployeeMarginDTO: # from MarginReportDTO
+      type: object
+      properties:
+        employeeId:
+          type: integer
+        employeeCode:
+          type: string
+          nullable: true
+        employeeName:
+          type: string
+        team:
+          $ref: '#/components/schemas/MarginReportTeamBasicDTO'
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        marginData:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginReportMarginDataDTO'
+        averageMargin:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    MarginReportTeamMarginDataDTO: # from MarginReportDTO (for Team)
+      type: object
+      properties:
+        period:
+          type: string
+        totalCost:
+          type: integer
+          format: int64
+        totalRevenue:
+          type: integer
+          format: int64
+        margin:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    MarginReportTeamMarginDTO: # from MarginReportDTO
+      type: object
+      properties:
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        leader:
+          $ref: '#/components/schemas/MarginReportLeaderDTO'
+          nullable: true
+        employeeCount:
+          type: integer
+        marginData:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarginReportTeamMarginDataDTO'
+        averageMargin:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    MarginReportDTO:
+      type: object
+      properties:
+        reportInfo:
+          $ref: '#/components/schemas/MarginReportInfoDTO'
+        summaryMetrics:
+          $ref: '#/components/schemas/MarginReportSummaryMetricsDTO'
+        content:
+          type: array
+          items:
+            oneOf: # Content can be EmployeeMarginDTO or TeamMarginDTO
+              - $ref: '#/components/schemas/MarginReportEmployeeMarginDTO'
+              - $ref: '#/components/schemas/MarginReportTeamMarginDTO'
+          description: "List of employee margins or team margins, depending on 'groupBy' parameter"
+        pageable:
+          $ref: '#/components/schemas/EmployeeReportPageableDTO' # Reusing the same PageableDTO structure
+
+    # CommonReportDTO components (nếu các báo cáo dùng chung)
+    # Tôi sẽ không định nghĩa lại các DTO trong CommonReportDTO.java ở đây
+    # vì chúng có thể là các thành phần nhỏ hơn, không phải là response body chính.
+    # Nếu một endpoint trả về ApiResponse<CommonReportDTO.SomeInnerDTO>, thì SomeInnerDTO cần được định nghĩa.
+
+    # Generic ApiResponse Wrappers (đã có ApiResponse<T> chung)
+    ApiResponseDashboardSummary:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        errorCode:
+          type: string
+          nullable: true
+        data:
+          $ref: '#/components/schemas/DashboardSummaryDTO'
+        errors:
+          type: array
+          items:
+            type: object # FieldError
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        pageableInfo:
+          $ref: '#/components/schemas/PageableInfo'
+          nullable: true
+          
+    ApiResponseEmployeeReport:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        errorCode:
+          type: string
+          nullable: true
+        data:
+          $ref: '#/components/schemas/EmployeeReportDTO'
+        errors:
+          type: array
+          items:
+            type: object # FieldError
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        pageableInfo: # EmployeeReportDTO đã chứa pageable rồi, xem xét có cần cái này ở wrapper ngoài không.
+                      # Nếu EmployeeReportDTO là data thì pageableInfo ở ngoài có thể thừa.
+                      # Controller trả về ApiResponse.success(result) với result là EmployeeReportDTO.
+                      # EmployeeReportDTO đã có pageable.
+          type: object 
+          nullable: true
+
+    ApiResponseMarginReport:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        errorCode:
+          type: string
+          nullable: true
+        data:
+          $ref: '#/components/schemas/MarginReportDTO'
+        errors:
+          type: array
+          items:
+            type: object # FieldError
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        pageableInfo: # Tương tự như trên, MarginReportDTO đã có pageable.
+          type: object
+          nullable: true
+
+    ApiResponseObject: # Cho các báo cáo trả về ApiResponse<Object>
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: integer
+        errorCode:
+          type: string
+          nullable: true
+        data:
+          type: object # Dữ liệu thực tế có thể là một trong các CommonReportDTO.* hoặc cấu trúc ad-hoc
+          additionalProperties: true # Cho phép bất kỳ cấu trúc nào
+          description: "Cấu trúc dữ liệu cụ thể phụ thuộc vào báo cáo được yêu cầu. Có thể sử dụng các thành phần từ CommonReportDTO."
+        errors:
+          type: array
+          items:
+            type: object # FieldError
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        pageableInfo: # Các báo cáo này cũng có phân trang
+          $ref: '#/components/schemas/EmployeeReportPageableDTO' # Dùng chung cấu trúc Pageable
+          nullable: true

@@ -113,12 +113,20 @@ public class ContractMapper {
             return null;
         }
         
+        Long contractId = null;
+        BigDecimal contractTotalValue = null;
+        if (paymentTerm.getContract() != null) {
+            contractId = paymentTerm.getContract().getId();
+            contractTotalValue = paymentTerm.getContract().getTotalValue();
+        }
+
         return ContractPaymentTermDTO.builder()
                 .id(paymentTerm.getId())
+                .contractId(contractId)
                 .termNumber(paymentTerm.getTermNumber())
                 .dueDate(paymentTerm.getExpectedPaymentDate())
                 .amount(paymentTerm.getExpectedAmount())
-                .percentage(calculatePercentage(paymentTerm.getExpectedAmount(), paymentTerm.getContract().getTotalValue()))
+                .percentage(calculatePercentage(paymentTerm.getExpectedAmount(), contractTotalValue))
                 .description(paymentTerm.getDescription())
                 .status(paymentTerm.getPaymentStatus())
                 .paidDate(paymentTerm.getActualPaymentDate())

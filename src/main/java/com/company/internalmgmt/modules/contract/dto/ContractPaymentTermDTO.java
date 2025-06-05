@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ContractPaymentTermDTO {
     private Long id;
+    private Long contractId;
     private Integer termNumber;
     private LocalDate dueDate;
     private BigDecimal amount;
